@@ -55,16 +55,54 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') { if(visorFotos.length>1){visorIndex=(visorIndex+1)%visorFotos.length;actualizarVisor();} }
 });
 
-// =================== RESPONSABLE ===================
-let inspectorActual = null;
+function actualizarFolioNuevo(val) {
+  const tag  = document.getElementById('folioTag');
+  const warn = document.getElementById('folioWarn');
+  if (val && parseInt(val) > 0) {
+    const folioPropuesto = 'OA-' + String(parseInt(val)).padStart(4,'0');
+    // Verificar solo contra registros que existen actualmente en memoria
+    const duplicado = registros.some(r => r.folio === folioPropuesto);
+    if (duplicado) {
+      if (tag)  { tag.textContent = '⚠ Ocupado'; tag.style.background = 'rgba(220,38,38,0.12)'; tag.style.color = '#DC2626'; }
+      if (warn) { warn.textContent = folioPropuesto + ' ya está en uso. Elige otro número.'; warn.style.display = 'block'; }
+      document.getElementById('btnGuardar').disabled = true;
+    } else {
+      if (tag)  { tag.textContent = folioPropuesto; tag.style.background = 'rgba(0,155,222,0.1)'; tag.style.color = 'var(--blue)'; }
+      if (warn) { warn.style.display = 'none'; }
+      checkForm();
+    }
+  } else {
+    if (tag)  { tag.textContent = 'AUTO'; tag.style.background = ''; tag.style.color = ''; }
+    if (warn) { warn.style.display = 'none'; }
+    checkForm();
+  }
+}
+
+function actualizarProyecto(val) {
+  const chk = document.getElementById('chkProyecto');
+  if (chk) chk.classList.toggle('on', val && val.length === 4);
+}
+
+function actualizarDepto(val) {
+  const chk = document.getElementById('chkDepto');
+  if (chk) chk.classList.toggle('on', val && val.length > 0);
+}
+let supervisorActual = null;
 
 function selResponsable(siglas) {
-  inspectorActual = siglas;
-  showToast('<i class="bi bi-person-check-fill"></i> Inspector: ' + siglas);
+  supervisorActual = siglas;
+  showToast('<i class="bi bi-person-check-fill"></i> Supervisor: ' + siglas);
   goTo('screenResponsable', 'screenNuevo');
-  // Mostrar badge del inspector en el topbar de nueva OA
+  // Mostrar badge del supervisor en el topbar
   const sub = document.getElementById('nuevoFolioSub');
   if (sub) sub.textContent = (sub.textContent.split('·')[0]).trim() + ' · ' + siglas;
+  // Inicializar campo folio con el siguiente número automático
+  setTimeout(() => {
+    const fi = document.getElementById('folioInput');
+    if (fi && !fi.value) {
+      fi.placeholder = String(folioCounter).padStart(4,'0');
+    }
+  }, 100);
 }
 
 // =================== EDITAR OA ===================
@@ -75,25 +113,46 @@ function abrirEditar() {
   const r = currentDetalle;
   document.getElementById('editarFolioSub').textContent = r.folio;
 
-  // Preseleccionar área actual
   editState.area = r.area;
-  editState.inc = r.tipo;
+  editState.inc  = r.tipo;
 
   setTimeout(() => {
-    // Marcar área seleccionada
+    // Precargar folio (solo los números)
+    const folioEl = document.getElementById('editFolioInput');
+    if (folioEl) folioEl.value = parseInt(r.folio.replace(/\D/g,'')) || '';
+
+    // Precargar proyecto
+    const proyEl = document.getElementById('editProyectoInput');
+    if (proyEl) proyEl.value = r.proyecto ? r.proyecto.replace('R-','') : '';
+
+    // Precargar departamento
+    const deptoEl = document.getElementById('editDeptoInput');
+    if (deptoEl) deptoEl.value = r.departamento || '';
+
+    // Precargar foto de vista previa
+    const previewImg   = document.getElementById('editFotoPreviewImg');
+    const previewEmpty = document.getElementById('editFotoPreviewEmpty');
+    const primeraFoto  = (r.fotos && r.fotos[0]) || r.foto || '';
+    if (primeraFoto) {
+      previewImg.src = primeraFoto;
+      previewImg.style.display = 'block';
+      if (previewEmpty) previewEmpty.style.display = 'none';
+    } else {
+      previewImg.style.display = 'none';
+      if (previewEmpty) previewEmpty.style.display = 'block';
+    }
+
+    // Marcar área
     document.querySelectorAll('#editAreaList .area-list-item').forEach(el => {
       const name = el.querySelector('.ali-name')?.textContent;
-      if (name && (name === r.area || name.replace('—','-') === r.area.replace('—','-'))) {
+      if (name && (name === r.area || name.replace('—','-') === r.area.replace('—','-')))
         el.classList.add('sel');
-      }
     });
-    // Marcar incumplimiento seleccionado
+    // Marcar incumplimiento
     document.querySelectorAll('#screenEditar .inc-item').forEach(el => {
-      if (el.querySelector('.inc-text')?.textContent === r.tipo) {
-        el.classList.add('sel');
-      }
+      if (el.querySelector('.inc-text')?.textContent === r.tipo) el.classList.add('sel');
     });
-    // Rellenar notas
+    // Notas
     const notasEl = document.getElementById('editNotasTa');
     if (notasEl) notasEl.value = r.notas || '';
   }, 100);
@@ -131,10 +190,53 @@ function filterEditAreas(q) {
   });
 }
 
+function onEditFotoPreviewChange(input) {
+  if (!input.files || !input.files[0] || !currentDetalle) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result;
+    // Actualizar preview visual
+    const previewImg   = document.getElementById('editFotoPreviewImg');
+    const previewEmpty = document.getElementById('editFotoPreviewEmpty');
+    previewImg.src = base64;
+    previewImg.style.display = 'block';
+    if (previewEmpty) previewEmpty.style.display = 'none';
+    // Guardar en editState para que guardarEdicion la use
+    editState.fotoPreview = base64;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
 function guardarEdicion() {
   if (!currentDetalle) return;
   const reg = registros.find(r => r.folio === currentDetalle.folio);
   if (!reg) return;
+
+  // Nuevo folio
+  const folioInputEl = document.getElementById('editFolioInput');
+  if (folioInputEl && folioInputEl.value) {
+    const num = parseInt(folioInputEl.value);
+    if (num > 0) {
+      const nuevoFolio = 'OA-' + String(num).padStart(4,'0');
+      // Si el folio cambió, actualizar contador
+      if (nuevoFolio !== reg.folio) {
+        reg.folio = nuevoFolio;
+        if (num >= folioCounter) folioCounter = num + 1;
+        guardarEnStorage();
+        localStorage.setItem('tng_oa_folio', String(folioCounter));
+      }
+    }
+  }
+
+  // Proyecto
+  const proyEl = document.getElementById('editProyectoInput');
+  if (proyEl) {
+    reg.proyecto = proyEl.value ? 'R-' + proyEl.value : '';
+  }
+
+  // Departamento responsable
+  const deptoEl2 = document.getElementById('editDeptoInput');
+  if (deptoEl2) reg.departamento = deptoEl2.value || '';
 
   const notasVal = document.getElementById('editNotasTa')?.value || '';
   if (editState.area) reg.area = editState.area;
@@ -146,7 +248,17 @@ function guardarEdicion() {
   }
   reg.notas = notasVal;
 
+  // Si se cambió la foto de vista previa, ponerla como primera foto
+  if (editState.fotoPreview) {
+    if (!reg.fotos) reg.fotos = [];
+    reg.fotos[0] = editState.fotoPreview;
+    reg.foto = editState.fotoPreview;
+    editState.fotoPreview = null;
+  }
+
   guardarEnStorage();
+  sincronizarNube();
+  sincronizarSheets();
   showToast('<i class="bi bi-check-lg"></i> OA actualizada correctamente');
   currentDetalle = reg;
 
@@ -154,6 +266,223 @@ function guardarEdicion() {
     goTo('screenEditar', 'screenDetalle');
     verDetalle(reg.folio);
   }, 800);
+}
+
+// =================== SUPABASE ===================
+const SB_URL  = 'https://rbvoxtqvcavapxwjwmaf.supabase.co';
+const SB_KEY  = 'sb_publishable_SBYEEhjW06rB_qr-jDPt3Q_HLisHjtk';
+const SYNC_KEY = 'tng_last_sync';
+let sincronizando = false;
+
+function sbHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SB_KEY,
+    'Authorization': 'Bearer ' + SB_KEY,
+    'Prefer': 'return=minimal'
+  };
+}
+
+// Subir una foto base64 al bucket y devolver URL pública
+async function subirFoto(base64, folio, idx) {
+  if (!base64 || base64 === '[foto]' || !base64.startsWith('data:image')) return null;
+  try {
+    const res  = await fetch(base64);
+    const blob = await res.blob();
+    const ext  = blob.type.includes('png') ? 'png' : 'jpg';
+    const path = `${folio}/foto_${idx}.${ext}`;
+
+    const resp = await fetch(`${SB_URL}/storage/v1/object/fotos-oa/${path}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': blob.type,
+        'x-upsert': 'true',
+        'cache-control': '3600'
+      },
+      body: blob
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      console.warn('Error subiendo foto:', resp.status, err);
+      showToast('<i class="bi bi-exclamation-triangle"></i> Error al subir foto: ' + resp.status);
+      return null;
+    }
+    return `${SB_URL}/storage/v1/object/public/fotos-oa/${path}`;
+  } catch(e) {
+    console.warn('Exception subiendo foto:', e);
+    return null;
+  }
+}
+
+// Sincronizar una OA a Supabase (upsert)
+async function sincronizarOA(r) {
+  // Subir fotos que sean base64 y reemplazar por URLs
+  const fotosUrls = await Promise.all(
+    (r.fotos || []).map((f, i) =>
+      f && f.startsWith('data:image') ? subirFoto(f, r.folio, i) : Promise.resolve(f)
+    )
+  );
+  const fotoUrlFiltradas = fotosUrls.filter(Boolean);
+
+  const payload = {
+    folio:          r.folio,
+    supervisor:     r.supervisor || '—',
+    area:           r.area,
+    tipo:           r.tipo,
+    nivel:          r.nivel || '',
+    fecha:          r.fecha,
+    hora:           r.hora,
+    estatus:        r.estatus,
+    fecha_apertura: r.fechaAperturaISO || null,
+    fecha_cierre:   r.fechaCierreISO   || null,
+    dias_limite:    r.diasLimite ?? null,
+    notas:          r.notas || '',
+    proyecto:       r.proyecto || '',
+    departamento:   r.departamento || '',
+    fotos:          fotoUrlFiltradas
+  };
+
+  const resp = await fetch(`${SB_URL}/rest/v1/oas?folio=eq.${encodeURIComponent(r.folio)}`, {
+    method: 'GET',
+    headers: sbHeaders()
+  });
+  const existe = resp.ok && (await resp.json()).length > 0;
+
+  if (existe) {
+    await fetch(`${SB_URL}/rest/v1/oas?folio=eq.${encodeURIComponent(r.folio)}`, {
+      method: 'PATCH',
+      headers: sbHeaders(),
+      body: JSON.stringify(payload)
+    });
+  } else {
+    await fetch(`${SB_URL}/rest/v1/oas`, {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+  }
+
+  // Actualizar URLs en el registro local
+  if (fotoUrlFiltradas.length > 0) {
+    r.fotos = fotoUrlFiltradas;
+    r.foto  = fotoUrlFiltradas[0];
+    guardarEnStorage();
+  }
+}
+
+async function sincronizarNube() {
+  if (sincronizando) return;
+  sincronizando = true;
+  mostrarSyncStatus('syncing');
+  try {
+    await Promise.all(registros.map(r => sincronizarOA(r)));
+    localStorage.setItem(SYNC_KEY, new Date().toISOString());
+    mostrarSyncStatus('ok');
+    showToast('<i class="bi bi-cloud-check-fill"></i> Sincronizado correctamente');
+  } catch(e) {
+    mostrarSyncStatus('error');
+    showToast('<i class="bi bi-cloud-slash-fill"></i> Error al sincronizar');
+  } finally {
+    sincronizando = false;
+  }
+}
+
+async function cargarDesdeNube() {
+  mostrarSyncStatus('syncing');
+  try {
+    const resp = await fetch(
+      `${SB_URL}/rest/v1/oas?select=*&order=fecha_apertura.desc`,
+      { headers: sbHeaders() }
+    );
+    if (!resp.ok) { mostrarSyncStatus('offline'); return false; }
+    const data = await resp.json();
+    if (!data || data.length === 0) { mostrarSyncStatus('ok'); return false; }
+
+    // Mapa de fotos locales base64 para no perderlas
+    const fotosLocales = {};
+    registros.forEach(r => {
+      const b64 = (r.fotos || []).filter(f => f && f.startsWith('data:image'));
+      if (b64.length) fotosLocales[r.folio] = { fotos: r.fotos, foto: r.foto };
+    });
+
+    const foliosNube = new Set(data.map(r => r.folio));
+    const soloLocales = registros.filter(r => !foliosNube.has(r.folio));
+
+    registros = [
+      ...data.map(r => {
+        const local = fotosLocales[r.folio];
+        const fotos = local ? local.fotos : (r.fotos || []);
+        const foto  = local ? local.foto  : (fotos[0] || '');
+        return {
+          folio:            r.folio,
+          supervisor:       r.supervisor || '—',
+          area:             r.area,
+          tipo:             r.tipo,
+          nivel:            r.nivel,
+          fecha:            r.fecha,
+          hora:             r.hora,
+          estatus:          r.estatus,
+          fechaAperturaISO: r.fecha_apertura,
+          fechaCierreISO:   r.fecha_cierre || null,
+          diasLimite:       r.dias_limite,
+          notas:            r.notas || '',
+          proyecto:         r.proyecto || '',
+          departamento:     r.departamento || '',
+          fotos,
+          foto
+        };
+      }),
+      ...soloLocales
+    ];
+
+    // Actualizar folio counter
+    const maxNum = registros.reduce((max, r) => {
+      const n = parseInt((r.folio || '').replace(/\D/g,'')) || 0;
+      return n > max ? n : max;
+    }, folioCounter);
+    if (maxNum >= folioCounter) folioCounter = maxNum + 1;
+
+    guardarEnStorage();
+    updateStats();
+    localStorage.setItem(SYNC_KEY, new Date().toISOString());
+    mostrarSyncStatus('ok');
+    return true;
+  } catch(e) {
+    mostrarSyncStatus('offline');
+    return false;
+  }
+}
+
+// Eliminar OA de Supabase
+async function eliminarDeNube(folio) {
+  try {
+    await fetch(`${SB_URL}/rest/v1/oas?folio=eq.${encodeURIComponent(folio)}`, {
+      method: 'DELETE',
+      headers: sbHeaders()
+    });
+  } catch(e) {}
+}
+
+function mostrarSyncStatus(estado) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  const map = {
+    syncing: { icon:'bi-cloud-arrow-up-fill', color:'#D97706', text:'Sincronizando...' },
+    ok:      { icon:'bi-cloud-check-fill',    color:'#6EE7B7', text:'Sincronizado'     },
+    error:   { icon:'bi-cloud-slash-fill',    color:'#F87171', text:'Error'            },
+    offline: { icon:'bi-cloud-slash-fill',    color:'#9CA3AF', text:'Sin conexión'     },
+  };
+  const s = map[estado] || map.offline;
+  const last = localStorage.getItem(SYNC_KEY);
+  const lastStr = last ? new Date(last).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
+  el.innerHTML = `
+    <i class="bi ${s.icon}" style="color:${s.color};font-size:14px"></i>
+    <span style="font-size:11px;color:${s.color};font-weight:600">${s.text}</span>
+    <span style="font-size:10px;color:rgba(255,255,255,0.4);margin-left:4px">· ${lastStr}</span>
+  `;
 }
 
 // =================== PRIORIDADES ===================
@@ -450,19 +779,47 @@ function checkForm() {
 
 function guardarOA() {
   const now = new Date();
-  const nuevoFolio = 'OA-' + String(folioCounter).padStart(4,'0');
-  folioCounter++;
+
+  // Folio: manual si se ingresó, automático si no
+  const folioInputEl = document.getElementById('folioInput');
+  const folioManual = folioInputEl && folioInputEl.value ? parseInt(folioInputEl.value) : null;
+  const numFolio = folioManual && folioManual > 0 ? folioManual : folioCounter;
+  const nuevoFolio = 'OA-' + String(numFolio).padStart(4,'0');
+
+  // Validar duplicado
+  if (registros.some(r => r.folio === nuevoFolio)) {
+    showToast('<i class="bi bi-exclamation-triangle-fill"></i> ' + nuevoFolio + ' ya existe — cambia el número');
+    const warn = document.getElementById('folioWarn');
+    if (warn) { warn.textContent = nuevoFolio + ' ya está registrado. Elige otro número.'; warn.style.display = 'block'; }
+    const folioInputEl2 = document.getElementById('folioInput');
+    if (folioInputEl2) folioInputEl2.focus();
+    return;
+  }
+
+  // Actualizar contador
+  if (numFolio >= folioCounter) folioCounter = numFolio + 1;
+  else folioCounter++;
+
+  // Proyecto
+  const proyEl = document.getElementById('proyectoInput');
+  const proyecto = proyEl && proyEl.value && proyEl.value.length === 4 ? 'R-' + proyEl.value : '';
+
+  // Departamento responsable
+  const deptoEl = document.getElementById('deptoInput');
+  const departamento = deptoEl ? deptoEl.value : '';
 
   const tipo = fState.inc;
   const prio = getPrioridad(tipo);
 
   const nuevo = {
     folio: nuevoFolio,
-    inspector: inspectorActual || '—',
+    supervisor: supervisorActual || '—',
     area: fState.area,
     tipo: tipo,
     nivel: prio.nivel,
     diasLimite: prio.diasLimite,
+    proyecto: proyecto,
+    departamento: departamento,
     fechaAperturaISO: now.toISOString(),
     fecha: now.toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'}),
     hora: now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
@@ -475,13 +832,15 @@ function guardarOA() {
 
   registros.unshift(nuevo);
   guardarEnStorage();
+  sincronizarNube();
+  sincronizarSheets();
   updateStats();
   showToast('<i class="bi bi-check-lg"></i> OA ' + nuevoFolio + ' registrada correctamente');
 
   setTimeout(() => {
     resetNuevo();
     goTo('screenNuevo', 'screenMenu');
-    document.getElementById('nuevoFolioSub').textContent = 'OA-2026-' + String(folioCounter).padStart(4,'0');
+    document.getElementById('nuevoFolioSub').textContent = 'OA-' + String(folioCounter).padStart(4,'0');
   }, 1200);
 }
 
@@ -499,6 +858,22 @@ function resetNuevo() {
   document.getElementById('fotosCount').textContent='0';
   document.getElementById('notasTa').value='';
   document.getElementById('areaSearch').value='';
+  // Limpiar folio y proyecto
+  const fi = document.getElementById('folioInput');
+  if (fi) { fi.value=''; fi.placeholder=String(folioCounter).padStart(4,'0'); }
+  const ft = document.getElementById('folioTag');
+  if (ft) { ft.textContent='AUTO'; ft.style.background=''; ft.style.color=''; }
+  // Limpiar advertencia de folio duplicado
+  const fw = document.getElementById('folioWarn');
+  if (fw) { fw.style.display='none'; fw.textContent=''; }
+  const pi = document.getElementById('proyectoInput');
+  if (pi) pi.value='';
+  const cp = document.getElementById('chkProyecto');
+  if (cp) cp.classList.remove('on');
+  const di = document.getElementById('deptoInput');
+  if (di) di.value='';
+  const cd = document.getElementById('chkDepto');
+  if (cd) cd.classList.remove('on');
   filterAreas('');
   ['chk2','chk3','chk4','chk5'].forEach(id=>document.getElementById(id).classList.remove('on'));
   ['fc3','fc4','fc5'].forEach(id=>document.getElementById(id).classList.add('locked'));
@@ -542,6 +917,7 @@ function renderRegistros() {
       </div>
       <div class="reg-card-body" onclick="verDetalle('${r.folio}')">
         <div class="reg-tipo">${r.tipo}</div>
+        ${r.proyecto ? `<div style="font-size:11px;font-weight:700;color:var(--blue);margin:2px 0 4px"><i class="bi bi-briefcase-fill"></i> ${r.proyecto}</div>` : ''}
         <div style="margin:6px 0 4px">
           <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${prio.bg};color:${prio.color}">
                 ${prioridadIcon(prio)} ${prio.nivel}
@@ -596,6 +972,8 @@ function cancelarEliminar(folio) {
 function eliminarOA(folio) {
   registros = registros.filter(r => r.folio !== folio);
   guardarEnStorage();
+  eliminarDeNube(folio);
+  sincronizarSheets();
   updateStats();
   renderRegistros();
   showToast('<i class="bi bi-trash3"></i> OA ' + folio + ' eliminada');
@@ -626,9 +1004,19 @@ function verDetalle(folio) {
 
   document.getElementById('detalleInfo').innerHTML = `
     <div class="detalle-row">
-      <span class="dr-key">Inspector</span>
-      <span class="dr-val">${r.inspector || '—'}</span>
+      <span class="dr-key">Supervisor</span>
+      <span class="dr-val">${r.supervisor || '—'}</span>
     </div>
+    ${r.proyecto ? `
+    <div class="detalle-row">
+      <span class="dr-key">Proyecto</span>
+      <span class="dr-val" style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--blue)">${r.proyecto}</span>
+    </div>` : ''}
+    ${r.departamento ? `
+    <div class="detalle-row">
+      <span class="dr-key">Depto. Responsable</span>
+      <span class="dr-val">${r.departamento}</span>
+    </div>` : ''}
     <div class="detalle-row">
       <span class="dr-key">Área</span>
       <span class="dr-val">${r.area}</span>
@@ -717,6 +1105,8 @@ function guardarEstatus() {
     }
   }
   guardarEnStorage();
+  sincronizarNube();
+  sincronizarSheets();
   updateStats();
   showToast('<i class="bi bi-check-lg"></i> Estatus actualizado a: ' + (nuevoEstatus==='abierta'?'Abierta':'Cerrada'));
   setTimeout(()=>goBack('screenDetalle','screenPasados'),900);
@@ -814,6 +1204,7 @@ function generarPDF() {
 
         <!-- Tabla de datos -->
         <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+          ${r.proyecto ? filaTabla('Proyecto', r.proyecto) : ''}
           ${filaTabla('Área', r.area)}
           ${filaTabla('Categoría', r.tipo)}
           ${filaTabla('Comentario', r.notas || '—')}
@@ -825,12 +1216,17 @@ function generarPDF() {
         </table>
 
         <!-- Pie de página -->
-        <div style="border-top:1px solid #dde3ee;padding-top:12px;display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:9px;color:#2B7EC1;font-weight:700;letter-spacing:0.5px;font-family:Arial">
-            HUTCHISON PORTS TNG | OBSERVACIÓN AMBIENTAL
+        <div style="border-top:1px solid #dde3ee;padding-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="font-size:9px;color:#2B7EC1;font-weight:700;letter-spacing:0.5px;font-family:Arial">
+              HUTCHISON PORTS TNG | OBSERVACIÓN AMBIENTAL
+            </div>
+            <div style="font-size:9px;color:#9CA3AF;font-family:Arial">
+              Generado: ${new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'})}
+            </div>
           </div>
-          <div style="font-size:9px;color:#9CA3AF;font-family:Arial">
-            Generado: ${new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'})}
+          <div style="font-size:9px;color:#6B7280;font-family:Arial;font-style:italic;text-align:center;padding-top:6px;border-top:1px dashed #eef0f4">
+            Cualquier duda o comentario, comunicarse con el número de Protección Ambiental: 2295489455
           </div>
         </div>
 
@@ -897,22 +1293,26 @@ function _generarExcel() {
 
   // ============ HOJA: BITÁCORA — mismas columnas que el original ============
   // A=FOLIO OA, B=Hora inicio, C=Hora finalización, D=Fecha, E=Correo electrónico,
-  // F=Columna1, G=SUPERINTENDENTE, H=RESPONSABLE, I=ÁREA, J=NUMERO DE PROYECTO,
-  // K=Área, L=Categorías, M=Nivel, N=Días, O=Comentario,
-  // P=Día Esperado de Cierre, Q=Dias Transcurridos, R=Hoy, S=Estatus, T= , U=Tiempo de Cierre
+  // A=FOLIO OA, B=Hora inicio, C=Hora finalización, D=Fecha, E=Supervisor,
+  // F=SUPERINTENDENTE, G=RESPONSABLE, H=ÁREA, I=PROYECTO,
+  // J=Categorías, K=Nivel, L=Días, M=Comentario,
+  // N=Día Esperado de Cierre, O=Dias Transcurridos, P=Hoy, Q=Estatus, R=Fecha Cierre, S=Tiempo de Cierre
 
   const headers = [
     'FOLIO OA','Hora de inicio','Hora de finalización','Fecha',
-    'Correo electrónico','Columna1','SUPERINTENDENTE','RESPONSABLE',
-    'ÁREA ','NUMERO DE PROYECTO','Área','Categorías',
+    'Supervisor','SUPERINTENDENTE','RESPONSABLE',
+    'ÁREA','NUMERO DE PROYECTO','Categorías',
     'Nivel','Días','Comentario Obligatoria "Se detecto ..."',
     'Día Esperado de Cierre','Dias Transcurridos','Hoy',
-    'Estatus',' ','Tiempo de Cierre'
+    'Estatus','Fecha de Cierre','Tiempo de Cierre'
   ];
 
   const filas = [headers];
 
-  registros.forEach((r, i) => {
+  // De más antigua a más nueva
+  const registrosOrdenados = [...registros].reverse();
+
+  registrosOrdenados.forEach((r, i) => {
     const rowNum = i + 2;
     const prio = getPrioridad(r.tipo);
 
@@ -943,38 +1343,36 @@ function _generarExcel() {
     }
 
     filas.push([
-      r.folio || '',          // A - FOLIO OA
-      horaInicio,             // B - Hora de inicio
-      horaFin,                // C - Hora de finalización
-      fechaStr,               // D - Fecha
-      r.inspector || '—',    // E - Correo electrónico (inspector)
-      '',                     // F - Columna1
-      '—',                    // G - SUPERINTENDENTE
-      '—',                    // H - RESPONSABLE
-      r.area || '',           // I - ÁREA
-      '—',                    // J - NUMERO DE PROYECTO
-      '—',                    // K - Área funcional
-      r.tipo || '',           // L - Categorías
-      prio.nivel || '—',      // M - Nivel
-      r.diasLimite ?? prio.diasLimite ?? '—',  // N - Días
-      r.notas || '',          // O - Comentario
-      diaEsperado,            // P - Día Esperado de Cierre
-      diasTransc,             // Q - Dias Transcurridos
-      hoy,                    // R - Hoy
-      r.estatus === 'cerrada' ? 'Cerrado' : 'Abierto',  // S - Estatus
-      fechaCierreStr,         // T - (espacio = fecha cierre real)
-      tiempoCierre,           // U - Tiempo de Cierre
+      r.folio || '',                              // A - FOLIO OA
+      horaInicio,                                 // B - Hora de inicio
+      horaFin,                                    // C - Hora de finalización
+      fechaStr,                                   // D - Fecha
+      r.supervisor || '—',                        // E - Supervisor
+      '—',                                        // F - SUPERINTENDENTE
+      '—',                                        // G - RESPONSABLE
+      r.area || '',                               // H - ÁREA
+      r.proyecto || '',                           // I - NUMERO DE PROYECTO
+      r.tipo || '',                               // J - Categorías
+      prio.nivel || '—',                          // K - Nivel
+      r.diasLimite ?? prio.diasLimite ?? '—',     // L - Días
+      r.notas || '',                              // M - Comentario
+      diaEsperado,                                // N - Día Esperado de Cierre
+      diasTransc,                                 // O - Dias Transcurridos
+      hoy,                                        // P - Hoy
+      r.estatus === 'cerrada' ? 'Cerrado' : 'Abierto', // Q - Estatus
+      fechaCierreStr,                             // R - Fecha de Cierre
+      tiempoCierre,                               // S - Tiempo de Cierre
     ]);
   });
 
   const wsBit = XLSX.utils.aoa_to_sheet(filas);
 
-  // Anchos exactos del original
+  // Anchos de columnas
   wsBit['!cols'] = [
-    {wch:11.66},{wch:16},{wch:20.88},{wch:20.88},{wch:19.88},{wch:19.88},
-    {wch:23.10},{wch:20},{wch:23.10},{wch:18.33},{wch:13},{wch:34},
-    {wch:13},{wch:12.55},{wch:32.10},{wch:16.33},{wch:13.33},{wch:11.10},
-    {wch:16.33},{wch:11.44},{wch:15.44}
+    {wch:11.66},{wch:16},{wch:20.88},{wch:20.88},{wch:19.88},
+    {wch:23.10},{wch:20},{wch:23.10},{wch:18.33},{wch:34},
+    {wch:13},{wch:12.55},{wch:32.10},{wch:16.33},{wch:13.33},
+    {wch:11.10},{wch:16.33},{wch:11.44},{wch:15.44}
   ];
 
   // Freeze fila 1
@@ -987,6 +1385,554 @@ function _generarExcel() {
   showToast('<i class="bi bi-file-earmark-excel"></i> Bitácora exportada correctamente');
 }
 
+// =================== REPORTE SEMANAL ===================
+function generarReporteSemanal() {
+  if (!registros || registros.length === 0) {
+    showToast('<i class="bi bi-exclamation-triangle"></i> No hay OAs para generar el reporte');
+    return;
+  }
+
+  // Calcular semana actual (lunes a viernes)
+  const hoy = new Date();
+  const diaSemana = hoy.getDay(); // 0=dom, 1=lun ... 6=sab
+  const diffLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+  const lunes = new Date(hoy); lunes.setDate(hoy.getDate() + diffLunes); lunes.setHours(0,0,0,0);
+  const viernes = new Date(lunes); viernes.setDate(lunes.getDate() + 4); viernes.setHours(23,59,59,999);
+
+  // Número de semana ISO
+  const semanaNum = (() => {
+    const d = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  })();
+
+  const fmtFecha = d => d.toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+  const fmtCorto = d => d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit'});
+
+  // Filtrar OAs para el reporte
+  const oasReporte = registros.filter(r => {
+    const apertura = r.fechaAperturaISO ? new Date(r.fechaAperturaISO) : null;
+    const cierre   = r.fechaCierreISO   ? new Date(r.fechaCierreISO)   : null;
+    if (r.estatus === 'abierta') return true; // todas las abiertas
+    if (r.estatus === 'cerrada' && cierre && cierre >= lunes && cierre <= viernes) return true; // cerradas esta semana
+    return false;
+  });
+
+  // KPIs
+  const total    = registros.length;
+  const cerradas = registros.filter(r => r.estatus === 'cerrada').length;
+  const abiertas = registros.filter(r => r.estatus === 'abierta').length;
+  const diasCierre = registros
+    .filter(r => r.estatus === 'cerrada' && r.fechaAperturaISO && r.fechaCierreISO)
+    .map(r => Math.abs((new Date(r.fechaCierreISO) - new Date(r.fechaAperturaISO)) / 86400000));
+  const promDias = diasCierre.length ? (diasCierre.reduce((a,b)=>a+b,0) / diasCierre.length).toFixed(1) : '—';
+  const pctCerradas = total ? Math.round(cerradas / total * 100) : 0;
+
+  // OAs por mes
+  const porMes = {};
+  registros.forEach(r => {
+    if (!r.fechaAperturaISO) return;
+    const d = new Date(r.fechaAperturaISO);
+    const key = d.toLocaleDateString('es-MX',{month:'short',year:'numeric'});
+    const mes = d.toLocaleDateString('es-MX',{month:'short'});
+    if (!porMes[key]) porMes[key] = {label: mes.charAt(0).toUpperCase()+mes.slice(1), cerradas:0, abiertas:0};
+    if (r.estatus === 'cerrada') porMes[key].cerradas++;
+    else porMes[key].abiertas++;
+  });
+  const meses = Object.values(porMes).slice(-4);
+  const maxMes = Math.max(...meses.map(m => m.cerradas + m.abiertas), 1);
+
+  // Niveles de riesgo
+  const PRIOS = getPrioridad;
+  const niveles = {Bajo:0, Medio:0, Alto:0, Inmediato:0};
+  registros.forEach(r => {
+    const p = getPrioridad(r.tipo);
+    if (p && p.nivel) niveles[p.nivel] = (niveles[p.nivel]||0) + 1;
+  });
+
+  // Categorías — % de cierre por tipo
+  const catMap = {};
+  registros.forEach(r => {
+    if (!catMap[r.tipo]) catMap[r.tipo] = {total:0, cerradas:0};
+    catMap[r.tipo].total++;
+    if (r.estatus === 'cerrada') catMap[r.tipo].cerradas++;
+  });
+  const categorias = Object.entries(catMap)
+    .map(([tipo,v]) => ({tipo, pct: Math.round(v.cerradas/v.total*100)}))
+    .sort((a,b) => b.pct - a.pct);
+
+  // Abreviaturas de categorías
+  const abrevTipo = t => t
+    .replace('Incorrecta Segregación RP','Seg. Residuos RP')
+    .replace('Incorrecta Segregación RME','Seg. Residuos RME')
+    .replace('Incorrecto Almacenaje de Materiales','Almacenaje Incorrecto')
+    .replace('Contaminación al Suelo — DERRAME','Contam. Suelo')
+    .replace('Agotamiento de Recursos — FUGA','Agotamiento / Fugas')
+    .replace('Movimiento de Residuos','Movimiento Residuos');
+
+  // Proyectos — % de cierre
+  const proyMap = {};
+  registros.filter(r => r.proyecto).forEach(r => {
+    const k = r.proyecto;
+    if (!proyMap[k]) proyMap[k] = {total:0, cerradas:0};
+    proyMap[k].total++;
+    if (r.estatus === 'cerrada') proyMap[k].cerradas++;
+  });
+  const proyectos = Object.entries(proyMap)
+    .map(([p,v]) => ({nombre:p, pct: Math.round(v.cerradas/v.total*100)}))
+    .sort((a,b) => b.pct - a.pct)
+    .slice(0,6);
+
+  // Áreas — % de cierre (por grupos de área)
+  const areaMap = {};
+  registros.forEach(r => {
+    const grp = r.area ? r.area.split(' ')[0] : 'Otro';
+    if (!areaMap[grp]) areaMap[grp] = {total:0, cerradas:0};
+    areaMap[grp].total++;
+    if (r.estatus === 'cerrada') areaMap[grp].cerradas++;
+  });
+  const areas = Object.entries(areaMap)
+    .map(([a,v]) => ({nombre:a, pct: Math.round(v.cerradas/v.total*100)}))
+    .sort((a,b) => b.pct - a.pct)
+    .slice(0,5);
+
+  // OAs abiertas agrupadas por supervisor
+  const oasAbiertas = registros.filter(r => r.estatus === 'abierta');
+  const supMap = {};
+  oasAbiertas.forEach(r => {
+    const k = r.supervisor || '—';
+    if (!supMap[k]) supMap[k] = {area: r.area, oas: []};
+    supMap[k].oas.push(r);
+  });
+
+  // Helpers HTML
+  const colorBarra = pct => pct >= 85 ? '#1e7e34' : pct >= 60 ? '#d35400' : '#c0392b';
+  const barraHTML = (nombre, pct) => `
+    <div class="brow">
+      <div class="bname">${nombre}</div>
+      <div class="btrack"><div class="bfill" style="width:${pct}%;background:${colorBarra(pct)}">
+        <span class="bpct">${pct}%</span>
+      </div></div>
+    </div>`;
+
+  const colBarra = pct => pct === 100 ? '#1e7e34' : pct >= 75 ? '#d35400' : '#c0392b';
+  const vBarHTML = (m) => {
+    const tot = m.cerradas + m.abiertas;
+    const hC = tot ? Math.round(m.cerradas/maxMes*70) : 0;
+    const hA = tot ? Math.round(m.abiertas/maxMes*70) : 0;
+    return `<div class="vcol">
+      <div class="vtop">${tot}</div>
+      <div class="vstack">
+        ${hA ? `<div class="vseg" style="height:${hA}px;background:#c0392b;border-radius:3px 3px 0 0"></div>` : ''}
+        ${hC ? `<div class="vseg" style="height:${hC}px;background:#1e7e34;border-radius:${hA?'0':'3px 3px'} 0 0"></div>` : ''}
+      </div>
+      <div class="vbot">${m.label}</div>
+    </div>`;
+  };
+
+  const nivelTag = nivel => {
+    const map = {
+      'Inmediato': 't-inm', 'Alto': 't-alt', 'Medio': 't-med', 'Bajo': 't-bajo'
+    };
+    return map[nivel] || 't-bajo';
+  };
+
+  // Contar niveles por supervisor
+  const supNiveles = (oas) => {
+    const n = {Inmediato:0, Alto:0, Medio:0, Bajo:0};
+    oas.forEach(r => { const p = getPrioridad(r.tipo); if(p) n[p.nivel] = (n[p.nivel]||0)+1; });
+    return Object.entries(n).filter(([,v])=>v>0);
+  };
+
+  // OA vencida?
+  const esVencida = r => {
+    if (r.estatus !== 'abierta' || !r.fechaAperturaISO) return false;
+    const prio = getPrioridad(r.tipo);
+    const diasLim = r.diasLimite ?? prio?.diasLimite ?? 0;
+    const apertura = new Date(r.fechaAperturaISO);
+    const limite = new Date(apertura); limite.setDate(apertura.getDate() + diasLim);
+    return new Date() > limite;
+  };
+
+  const diasTranscurridos = r => {
+    if (!r.fechaAperturaISO) return 0;
+    return Math.floor((new Date() - new Date(r.fechaAperturaISO)) / 86400000);
+  };
+
+  const abrevTipoCorto = t => t
+    .replace('Incorrecta Segregación RP','Seg. Res. RP')
+    .replace('Incorrecta Segregación RME','Seg. Res. RME')
+    .replace('Incorrecto Almacenaje de Materiales','Almacenaje')
+    .replace('Contaminación al Suelo — DERRAME','Contam. Suelo')
+    .replace('Agotamiento de Recursos — FUGA','Agotamiento/Fuga')
+    .replace('Movimiento de Residuos','Mov. Residuos')
+    .replace('Orden y Limpieza','Orden y Limpieza');
+
+  // Tarjetas de superintendentes
+  const supCardsHTML = Object.entries(supMap).map(([sup, {area, oas}]) => {
+    const nvls = supNiveles(oas);
+    const vencidas = oas.filter(r => esVencida(r));
+    const oasListHTML = oas.map(r => {
+      const dias = diasTranscurridos(r);
+      const v = esVencida(r);
+      return `<div class="fitem${v?' vencida':''}">
+        <span class="ftag">${r.folio}</span>
+        <span>${abrevTipoCorto(r.tipo)} · ${fmtCorto(new Date(r.fechaAperturaISO))} · ${dias} día${dias!==1?'s':''}</span>
+      </div>`;
+    }).join('');
+    return `
+    <div class="sup-card">
+      <div class="sup-hdr">
+        <div>
+          <div class="sup-name">${sup}</div>
+          <div class="sup-area">${area}</div>
+        </div>
+        <div class="sup-badge"><div class="sup-badge-num">${oas.length}</div><div class="sup-badge-lbl">OAs</div></div>
+      </div>
+      <div class="sup-body">
+        <div class="ntags">${nvls.map(([n,c])=>`<span class="ntag ${nivelTag(n)}">${n} ${c}</span>`).join('')}</div>
+        ${vencidas.length ? `<div class="venc">⚠ ${vencidas.length} vencida${vencidas.length>1?'s':''}</div>` : ''}
+        <div class="flist">${oasListHTML}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Montar HTML completo
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Dashboard OA S${semanaNum} ${hoy.getFullYear()}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Inter','Helvetica Neue',Arial,sans-serif; background:#F4F5F7; color:#1a1a2e; }
+  .page,.page2 { max-width:900px; margin:32px auto; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.10); }
+  .page2 { margin-top:0; margin-bottom:32px; }
+  .hdr { background:#0d3b7a; padding:14px 24px; display:flex; justify-content:space-between; align-items:center; }
+  .hdr-left { display:flex; align-items:center; gap:14px; }
+  .hdr-sep { width:1px; height:34px; background:rgba(255,255,255,.25); }
+  .hdr-title { font-size:13px; font-weight:700; color:#fff; text-transform:uppercase; letter-spacing:.06em; line-height:1.3; }
+  .hdr-right { text-align:right; font-size:10px; color:rgba(255,255,255,.65); line-height:1.7; }
+  .kpi-strip { display:grid; grid-template-columns:repeat(4,1fr); border-bottom:1px solid #eef0f4; }
+  .kpi { padding:16px 20px 14px; border-right:1px solid #eef0f4; position:relative; }
+  .kpi:last-child { border-right:none; }
+  .kpi::after { content:''; position:absolute; bottom:0; left:20px; right:20px; height:3px; border-radius:3px 3px 0 0; }
+  .kpi.blue::after { background:#0d3b7a; } .kpi.green::after { background:#1e7e34; }
+  .kpi.red::after { background:#c0392b; } .kpi.orange::after { background:#d35400; }
+  .kpi-label { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.1em; color:#9aa0b0; margin-bottom:4px; }
+  .kpi-value { font-size:36px; font-weight:700; line-height:1; }
+  .kpi.blue .kpi-value { color:#0d3b7a; } .kpi.green .kpi-value { color:#1e7e34; }
+  .kpi.red .kpi-value { color:#c0392b; } .kpi.orange .kpi-value { color:#d35400; }
+  .kpi-sub { font-size:10px; color:#aab0be; margin-top:4px; }
+  .body { padding:16px; background:#F4F5F7; display:flex; flex-direction:column; gap:12px; }
+  .row { display:grid; gap:12px; }
+  .r-half { grid-template-columns:1fr 1fr; } .r-16 { grid-template-columns:1.6fr 1fr; } .r-13 { grid-template-columns:1fr 2.6fr; }
+  .card { background:#fff; border-radius:8px; overflow:hidden; border:1px solid #eef0f4; }
+  .card-title { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#9aa0b0; padding:10px 16px 8px; border-bottom:1px solid #f0f2f5; }
+  .bars { padding:10px 16px 12px; display:flex; flex-direction:column; gap:6px; }
+  .brow { display:flex; align-items:center; gap:8px; }
+  .bname { font-size:10px; color:#555e72; width:148px; flex-shrink:0; text-align:right; }
+  .btrack { flex:1; height:16px; background:#f0f2f5; border-radius:4px; overflow:hidden; }
+  .bfill { height:100%; border-radius:4px; display:flex; align-items:center; justify-content:flex-end; padding-right:7px; }
+  .bpct { font-size:10px; font-weight:700; color:#fff; }
+  .donut-wrap { display:flex; align-items:center; justify-content:center; padding:16px 10px; }
+  .donut-rel { position:relative; width:110px; height:110px; }
+  .donut-svg { width:110px; height:110px; }
+  .donut-ctr { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; }
+  .donut-pct { font-size:22px; font-weight:700; color:#1e7e34; line-height:1; }
+  .donut-lbl { font-size:10px; color:#aab0be; margin-top:2px; }
+  .vbars-wrap { padding:10px 20px 12px; }
+  .vbars { display:flex; align-items:flex-end; gap:16px; height:90px; margin-bottom:8px; }
+  .vcol { display:flex; flex-direction:column; align-items:center; flex:1; }
+  .vstack { display:flex; flex-direction:column; align-items:center; gap:1px; width:100%; justify-content:flex-end; height:76px; }
+  .vseg { width:100%; }
+  .vtop { font-size:11px; font-weight:700; color:#333; margin-bottom:2px; }
+  .vbot { font-size:10px; color:#9aa0b0; margin-top:4px; }
+  .vlegend { display:flex; gap:12px; }
+  .vl-dot { width:9px; height:9px; border-radius:2px; display:inline-block; margin-right:3px; vertical-align:middle; }
+  .vl-txt { font-size:9px; color:#9aa0b0; vertical-align:middle; }
+  .niv-grid { display:grid; grid-template-columns:repeat(4,1fr); }
+  .niv { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:14px 6px; text-align:center; border-right:1px solid #f0f2f5; }
+  .niv:last-child { border-right:none; }
+  .niv-lbl { font-size:8px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; margin-bottom:3px; }
+  .niv-num { font-size:32px; font-weight:700; line-height:1; }
+  .niv-pct { font-size:10px; margin-top:3px; }
+  .nb { background:#edfaf1; } .nb .niv-lbl,.nb .niv-pct,.nb .niv-num { color:#1e7e34; }
+  .nm { background:#fff8f0; } .nm .niv-lbl,.nm .niv-pct,.nm .niv-num { color:#d35400; }
+  .na { background:#fdf0f0; } .na .niv-lbl,.na .niv-pct,.na .niv-num { color:#c0392b; }
+  .ni { background:#fdf0f6; } .ni .niv-lbl,.ni .niv-pct,.ni .niv-num { color:#8e1552; }
+  .foot { text-align:center; font-size:9px; color:#c8ccd6; padding:10px 16px 12px; margin-top:4px; }
+  /* Página 2 */
+  .p2-body { padding:20px 24px; }
+  .p2-sec { font-size:11px; font-weight:700; color:#0d3b7a; text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
+  .p2-intro { font-size:10px; color:#8a90a0; margin-bottom:16px; line-height:1.5; }
+  .sup-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .sup-card { border-radius:8px; overflow:hidden; border:1px solid #eef0f4; }
+  .sup-hdr { background:#0d3b7a; color:#fff; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; }
+  .sup-name { font-size:11px; font-weight:700; }
+  .sup-area { font-size:9px; color:rgba(255,255,255,.65); margin-top:2px; }
+  .sup-badge { text-align:center; background:rgba(255,255,255,.15); border-radius:6px; padding:4px 8px; flex-shrink:0; }
+  .sup-badge-num { font-size:18px; font-weight:700; line-height:1; }
+  .sup-badge-lbl { font-size:8px; color:rgba(255,255,255,.7); }
+  .sup-body { padding:10px 12px; display:flex; flex-direction:column; gap:7px; }
+  .ntags { display:flex; flex-wrap:wrap; gap:4px; }
+  .ntag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:4px; }
+  .t-inm { background:#fdf0f6; color:#8e1552; border:1px solid #8e155240; }
+  .t-alt { background:#fdf0f0; color:#c0392b; border:1px solid #c0392b40; }
+  .t-med { background:#fff8f0; color:#d35400; border:1px solid #d3540040; }
+  .t-bajo { background:#edfaf1; color:#1e7e34; border:1px solid #1e7e3440; }
+  .venc { font-size:9px; font-weight:700; color:#c0392b; padding:3px 8px; background:#fdf0f0; border-left:3px solid #c0392b; border-radius:0 4px 4px 0; }
+  .flist { display:flex; flex-direction:column; gap:4px; }
+  .fitem { display:flex; align-items:center; gap:6px; font-size:9px; color:#555e72; padding:3px 0; border-bottom:1px solid #f5f6f8; }
+  .fitem:last-child { border-bottom:none; }
+  .fitem.vencida { background:#fff8f8; border-left:2px solid #c0392b; padding-left:4px; border-radius:0 3px 3px 0; }
+  .ftag { background:#eef0f4; border-radius:3px; padding:1px 5px; font-weight:700; font-size:8px; color:#0d3b7a; flex-shrink:0; }
+  .p2-legend { display:flex; gap:12px; align-items:center; margin-top:16px; flex-wrap:wrap; }
+  .leg-i { display:flex; align-items:center; gap:4px; font-size:9px; color:#555e72; }
+  .leg-sq { width:12px; height:12px; border-radius:2px; flex-shrink:0; }
+  @media print {
+    body { background:#fff; }
+    .page,.page2 { margin:0; box-shadow:none; border-radius:0; page-break-after:always; }
+    .page2 { page-break-after:auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PÁGINA 1 -->
+<div class="page">
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="hdr-sep"></div>
+      <div class="hdr-title">Dashboard · Observaciones Ambientales ${hoy.getFullYear()}</div>
+    </div>
+    <div class="hdr-right">Corte: ${fmtFecha(hoy)}<br>Bitácora OA · Semana S${semanaNum}</div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi blue">
+      <div class="kpi-label">Total OAs</div>
+      <div class="kpi-value">${total}</div>
+      <div class="kpi-sub">registradas ${hoy.getFullYear()}</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Cerradas</div>
+      <div class="kpi-value">${cerradas}</div>
+      <div class="kpi-sub">${pctCerradas}% del total</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">Abiertas</div>
+      <div class="kpi-value">${abiertas}</div>
+      <div class="kpi-sub">${100 - pctCerradas}% del total</div>
+    </div>
+    <div class="kpi orange">
+      <div class="kpi-label">Prom. Días</div>
+      <div class="kpi-value">${promDias}</div>
+      <div class="kpi-sub">días promedio cierre</div>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="row r-16">
+      <!-- Categorías -->
+      <div class="card">
+        <div class="card-title">Categorías de Observación</div>
+        <div class="bars">
+          ${categorias.map(c => barraHTML(abrevTipo(c.tipo), c.pct)).join('')}
+        </div>
+      </div>
+      <!-- Dona -->
+      <div class="card">
+        <div class="card-title">Estatus General</div>
+        <div class="donut-wrap">
+          <div class="donut-rel">
+            <svg class="donut-svg" viewBox="0 0 110 110">
+              <circle cx="55" cy="55" r="42" fill="none" stroke="#eef0f4" stroke-width="13"/>
+              <circle cx="55" cy="55" r="42" fill="none" stroke="#1e7e34" stroke-width="13"
+                stroke-dasharray="${2*Math.PI*42*pctCerradas/100} ${2*Math.PI*42}"
+                stroke-dashoffset="${2*Math.PI*42*0.25}"
+                stroke-linecap="round" transform="rotate(-90 55 55)"/>
+              ${abiertas > 0 ? `<circle cx="55" cy="55" r="42" fill="none" stroke="#c0392b" stroke-width="13"
+                stroke-dasharray="${2*Math.PI*42*(100-pctCerradas)/100} ${2*Math.PI*42}"
+                stroke-dashoffset="${2*Math.PI*42*(1 - pctCerradas/100 + 0.25)}"
+                stroke-linecap="round" transform="rotate(-90 55 55)"/>` : ''}
+            </svg>
+            <div class="donut-ctr">
+              <div class="donut-pct">${pctCerradas}%</div>
+              <div class="donut-lbl">cerradas</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row r-13">
+      <!-- Barras verticales por mes -->
+      <div class="card">
+        <div class="card-title">OAs por Mes</div>
+        <div class="vbars-wrap">
+          <div class="vbars">
+            ${meses.map(m => vBarHTML(m)).join('')}
+          </div>
+          <div class="vlegend">
+            <div><span class="vl-dot" style="background:#1e7e34"></span><span class="vl-txt">Cerradas</span></div>
+            <div><span class="vl-dot" style="background:#c0392b"></span><span class="vl-txt">Abiertas</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Niveles de riesgo -->
+      <div class="card">
+        <div class="card-title">Nivel de Riesgo</div>
+        <div class="niv-grid">
+          <div class="niv nb">
+            <div class="niv-lbl">Bajo</div>
+            <div class="niv-num">${niveles.Bajo||0}</div>
+            <div class="niv-pct">${total ? Math.round((niveles.Bajo||0)/total*100) : 0}%</div>
+          </div>
+          <div class="niv nm">
+            <div class="niv-lbl">Medio</div>
+            <div class="niv-num">${niveles.Medio||0}</div>
+            <div class="niv-pct">${total ? Math.round((niveles.Medio||0)/total*100) : 0}%</div>
+          </div>
+          <div class="niv na">
+            <div class="niv-lbl">Alto</div>
+            <div class="niv-num">${niveles.Alto||0}</div>
+            <div class="niv-pct">${total ? Math.round((niveles.Alto||0)/total*100) : 0}%</div>
+          </div>
+          <div class="niv ni">
+            <div class="niv-lbl">Inmediato</div>
+            <div class="niv-num">${niveles.Inmediato||0}</div>
+            <div class="niv-pct">${total ? Math.round((niveles.Inmediato||0)/total*100) : 0}%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${proyectos.length || areas.length ? `
+    <div class="row r-half">
+      ${proyectos.length ? `
+      <div class="card">
+        <div class="card-title">Proyectos / Buques</div>
+        <div class="bars">
+          ${proyectos.map(p => barraHTML(p.nombre, p.pct)).join('')}
+        </div>
+      </div>` : ''}
+      ${areas.length ? `
+      <div class="card">
+        <div class="card-title">Áreas</div>
+        <div class="bars">
+          ${areas.map(a => barraHTML(a.nombre, a.pct)).join('')}
+        </div>
+      </div>` : ''}
+    </div>` : ''}
+  </div>
+
+  <div class="foot">Sistema de Gestión Ambiental &nbsp;·&nbsp; Semana S${semanaNum} &nbsp;·&nbsp; Generado el ${fmtFecha(hoy)}</div>
+</div>
+
+<!-- PÁGINA 2 -->
+<div class="page2">
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="hdr-sep"></div>
+      <div class="hdr-title">Dashboard · Observaciones Ambientales ${hoy.getFullYear()}</div>
+    </div>
+    <div class="hdr-right">Corte: ${fmtFecha(hoy)}<br>Bitácora OA · Semana S${semanaNum}</div>
+  </div>
+
+  <div class="p2-body">
+    <div class="p2-sec">OAs Abiertas — Seguimiento por Supervisor</div>
+    <div class="p2-intro">Resumen de observaciones pendientes de cierre agrupadas por supervisor responsable.</div>
+    ${oasAbiertas.length === 0
+      ? `<div style="text-align:center;padding:40px;color:#1e7e34;font-weight:700;font-size:14px">✅ No hay OAs abiertas esta semana</div>`
+      : `<div class="sup-grid">${supCardsHTML}</div>`
+    }
+    <div class="p2-legend">
+      <div class="leg-i"><div class="leg-sq" style="background:#fdf0f6;border:1px solid #8e1552;"></div><span style="color:#8e1552;font-weight:600;">Inmediato</span></div>
+      <div class="leg-i"><div class="leg-sq" style="background:#fdf0f0;border:1px solid #c0392b;"></div><span style="color:#c0392b;font-weight:600;">Alto</span></div>
+      <div class="leg-i"><div class="leg-sq" style="background:#fff8f0;border:1px solid #d35400;"></div><span style="color:#d35400;font-weight:600;">Medio</span></div>
+      <div class="leg-i"><div class="leg-sq" style="background:#edfaf1;border:1px solid #1e7e34;"></div><span style="color:#1e7e34;font-weight:600;">Bajo</span></div>
+      <div class="leg-i" style="margin-left:auto;">
+        <div class="leg-sq" style="background:#fff8f8;border-left:3px solid #c0392b;border-radius:0 2px 2px 0;"></div>
+        <span>Fecha de cierre vencida</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">Sistema de Gestión Ambiental &nbsp;·&nbsp; Semana S${semanaNum} &nbsp;·&nbsp; Generado el ${fmtFecha(hoy)}</div>
+</div>
+
+<script>window.print();</script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) {
+    showToast('<i class="bi bi-exclamation-triangle-fill"></i> Permite ventanas emergentes para generar el reporte');
+    return;
+  }
+  win.document.write(html);
+  win.document.close();
+}
+
+// =================== GOOGLE SHEETS SYNC ===================
+const GS_URL = 'https://script.google.com/macros/s/AKfycbwDcUe0r5JrLOqxruRItESlDeBf5YqETUaH-J7wsCqGBwAIJ8-SYVw905-Lxa0JXJctMQ/exec';
+
+function sincronizarSheets() {
+  try {
+    const datos = registros.map(r => ({
+      folio:            r.folio,
+      supervisor:       r.supervisor || '—',
+      area:             r.area,
+      tipo:             r.tipo,
+      nivel:            r.nivel || '',
+      fecha:            r.fecha,
+      hora:             r.hora,
+      estatus:          r.estatus,
+      fechaAperturaISO: r.fechaAperturaISO || '',
+      fechaCierreISO:   r.fechaCierreISO   || '',
+      diasLimite:       r.diasLimite ?? '',
+      notas:            r.notas || '',
+      proyecto:         r.proyecto || '',
+      departamento:     r.departamento || ''
+    }));
+
+    const payload = JSON.stringify({ action: 'sync', registros: datos });
+
+    const iframeId = 'gs_iframe_' + Date.now();
+    const iframe = document.createElement('iframe');
+    iframe.name = iframeId;
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = GS_URL;
+    form.target = iframeId;
+    form.style.display = 'none';
+
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'payload';
+    input.value = payload;
+    form.appendChild(input);
+
+    document.body.appendChild(form);
+    form.submit();
+
+    setTimeout(() => {
+      if (form.parentNode) form.parentNode.removeChild(form);
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    }, 5000);
+
+  } catch(e) {
+    console.warn('Error sincronizando Sheets:', e);
+  }
+}
+
 // =================== TOAST ===================
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -997,3 +1943,7 @@ function showToast(msg) {
 
 // Init
 updateStats();
+cargarDesdeNube().then(cargado => {
+  if (cargado) { renderRegistros(); updateStats(); }
+  sincronizarSheets();
+});

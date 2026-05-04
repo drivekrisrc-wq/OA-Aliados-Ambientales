@@ -62,7 +62,7 @@
         <div class="menu-hero">
           <div style="max-width:860px;margin:0 auto;width:100%">
             <div class="menu-greeting">Bienvenido de nuevo,</div>
-            <div class="menu-name">Inspector Ambiental</div>
+            <div class="menu-name">Supervisor Ambiental</div>
             <div class="menu-stats">
               <div class="stat-pill open">
                 <div class="stat-num" id="statAbiertas">3</div>
@@ -76,6 +76,15 @@
                 <div class="stat-num" id="statTotal">8</div>
                 <div class="stat-label">Total 2026</div>
               </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;background:rgba(255,255,255,0.07);border-radius:10px;padding:9px 14px;">
+              <div id="syncStatus" style="display:flex;align-items:center;gap:8px;">
+                <i class="bi bi-cloud-arrow-up-fill" style="color:#D97706;font-size:14px"></i>
+                <span style="font-size:11px;color:#D97706;font-weight:600">Verificando...</span>
+              </div>
+              <button onclick="sincronizarNube()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.15);color:white;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;cursor:pointer;font-family:'Barlow',sans-serif;display:flex;align-items:center;gap:5px;">
+                <i class="bi bi-arrow-clockwise"></i> Sincronizar
+              </button>
             </div>
           </div>
         </div>
@@ -100,6 +109,24 @@
             </div>
             <div class="menu-card-arrow"></div>
           </div>
+
+          <div class="menu-card" onclick="exportarExcel()">
+            <div class="menu-card-icon" style="background:linear-gradient(135deg,#1D6F42,#107C41)"><i class="bi bi-file-earmark-excel-fill" style="color:white;font-size:22px"></i></div>
+            <div class="menu-card-text">
+              <div class="menu-card-title">Exportar Bitácora</div>
+              <div class="menu-card-desc">Descarga Excel con todas las OAs registradas</div>
+            </div>
+            <div class="menu-card-arrow"></div>
+          </div>
+
+          <div class="menu-card" onclick="generarReporteSemanal()">
+            <div class="menu-card-icon" style="background:linear-gradient(135deg,#0d3b7a,#1a5cb5)"><i class="bi bi-bar-chart-fill" style="color:white;font-size:22px"></i></div>
+            <div class="menu-card-text">
+              <div class="menu-card-title">Reporte Semanal</div>
+              <div class="menu-card-desc">Dashboard de OAs — abre listo para imprimir o guardar como PDF</div>
+            </div>
+            <div class="menu-card-arrow"></div>
+          </div>
         </div>
       </div>
     </template>
@@ -116,7 +143,7 @@
           <div class="topbar-logo-mini">TNG</div>
         </div>
         <div class="responsable-content">
-          <div class="responsable-desc">Selecciona las siglas del inspector que está levantando esta observación ambiental.</div>
+          <div class="responsable-desc">Selecciona las siglas del supervisor que está levantando esta observación ambiental.</div>
           <div class="responsable-list">
             <div class="responsable-item" onclick="selResponsable('DMI')">
               <div class="resp-siglas">DMI</div>
@@ -124,6 +151,10 @@
             </div>
             <div class="responsable-item" onclick="selResponsable('ARL')">
               <div class="resp-siglas">ARL</div>
+              <div class="resp-arrow"><i class="bi bi-chevron-right"></i></div>
+            </div>
+            <div class="responsable-item" onclick="selResponsable('DAH')">
+              <div class="resp-siglas">DAH</div>
               <div class="resp-arrow"><i class="bi bi-chevron-right"></i></div>
             </div>
             <div class="responsable-item" onclick="selResponsable('EBG')">
@@ -156,6 +187,71 @@
         </div>
         <div class="form-content">
 
+          <!-- Folio editable -->
+          <div class="fcard" id="efc0">
+            <div class="fcard-head">
+              <div class="fcard-icon blue"><i class="bi bi-hash" style="color:#002b66"></i></div>
+              <div class="fcard-title">Número de OA</div>
+            </div>
+            <div class="fcard-body">
+              <div style="display:flex;align-items:center;gap:10px;background:var(--light);border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;">
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy);flex-shrink:0">OA-</span>
+                <input type="number" id="editFolioInput" min="1" max="9999" placeholder="0001"
+                  style="border:none;background:transparent;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy);width:100%;outline:none;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Proyecto editable -->
+          <div class="fcard" id="efc_proyecto">
+            <div class="fcard-head">
+              <div class="fcard-icon navy"><i class="bi bi-briefcase-fill" style="color:#002b66"></i></div>
+              <div class="fcard-title">Proyecto <span style="font-size:11px;font-weight:400;color:var(--mid)">(Opcional)</span></div>
+            </div>
+            <div class="fcard-body">
+              <div style="display:flex;align-items:center;gap:8px;background:var(--light);border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;">
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy);flex-shrink:0">R-</span>
+                <input type="number" id="editProyectoInput" min="1000" max="9999" placeholder="1234"
+                  style="border:none;background:transparent;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy);width:100%;outline:none;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Departamento Responsable -->
+          <div class="fcard" id="efc_depto">
+            <div class="fcard-head">
+              <div class="fcard-icon navy"><i class="bi bi-people-fill" style="color:#002b66"></i></div>
+              <div class="fcard-title">Departamento Responsable <span style="font-size:11px;font-weight:400;color:var(--mid)">(Opcional)</span></div>
+            </div>
+            <div class="fcard-body">
+              <select id="editDeptoInput"
+                style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:12px;background:var(--light);font-family:'Barlow',sans-serif;font-size:15px;font-weight:600;color:var(--navy);outline:none;appearance:none;-webkit-appearance:none;cursor:pointer;">
+                <option value="">— Selecciona un departamento —</option>
+                <option>Infraestructura</option>
+                <option>Elaboración</option>
+                <option>SOS</option>
+                <option>Soldadura</option>
+                <option>RRHH</option>
+                <option>Mantenimiento-Mec</option>
+                <option>Mantenimiento-Admi</option>
+                <option>Mantenimiento-Elec</option>
+                <option>Mantenimiento-Cab</option>
+                <option>Maniobras</option>
+                <option>Tuberos</option>
+                <option>Pañol Central</option>
+                <option>Almacén</option>
+                <option>Maquinado</option>
+                <option>Servicios</option>
+                <option>Mecanicos</option>
+                <option>PA</option>
+                <option>Recubrimientos</option>
+                <option>Dockmaster</option>
+                <option>Paileria</option>
+                <option>Andamios</option>
+              </select>
+            </div>
+          </div>
+
           <!-- Área -->
           <div class="fcard" id="efc2">
             <div class="fcard-head">
@@ -170,8 +266,16 @@
               <div class="area-list" id="editAreaList">
                 <div class="area-group-label">Diques y Muelles</div>
                 <div class="area-list-item" onclick="selEditArea(this,'Dique 2')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 2</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Dique 2 Babor Proa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 2 Babor Proa</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Dique 2 Estribor Proa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 2 Estribor Proa</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Dique 2 Babor Popa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 2 Babor Popa</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Dique 2 Estribor Popa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 2 Estribor Popa</span></div>
                 <div class="area-list-item" onclick="selEditArea(this,'Plan de Dique 2')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Plan de Dique 2</span></div>
                 <div class="area-list-item" onclick="selEditArea(this,'Dique 5')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Dique 5 Babor Proa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5 Babor Proa</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Dique 5 Estribor Proa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5 Estribor Proa</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Dique 5 Babor Popa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5 Babor Popa</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Dique 5 Estribor Popa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5 Estribor Popa</span></div>
                 <div class="area-list-item" onclick="selEditArea(this,'Muelle de Reparaciones')"><span class="ali-icon"><i class="fa-solid fa-gear" style="color:#002b66"></i></span><span class="ali-name">Muelle de Reparaciones</span></div>
                 <div class="area-list-item" onclick="selEditArea(this,'Plan de Dique 5')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Plan de Dique 5</span></div>
                 <div class="area-list-item" onclick="selEditArea(this,'Muelle de Alistamiento')"><span class="ali-icon"><i class="fa-solid fa-ship" style="color:#002b66"></i></span><span class="ali-name">Muelle de Alistamiento</span></div>
@@ -194,7 +298,10 @@
                 <div class="area-list-item" onclick="selEditArea(this,'Taller de Tuberos')"><span class="ali-icon"><i class="bi bi-gear-fill" style="color:#002b66"></i></span><span class="ali-name">Taller de Tuberos</span></div>
                 <div class="area-list-item" onclick="selEditArea(this,'Infraestructura')"><span class="ali-icon"><i class="bi bi-building" style="color:#002b66"></i></span><span class="ali-name">Infraestructura</span></div>
                 <div class="area-group-label">Zonas Especiales</div>
+                <div class="area-list-item" onclick="selEditArea(this,'Almacén General')"><span class="ali-icon"><i class="bi bi-box-seam-fill" style="color:#002b66"></i></span><span class="ali-name">Almacén General</span></div>
                 <div class="area-list-item" onclick="selEditArea(this,'Casa de la Risa')"><span class="ali-icon"><i class="bi bi-house-fill" style="color:#002b66"></i></span><span class="ali-name">Casa de la Risa</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Granalladora')"><span class="ali-icon"><i class="bi bi-gear-fill" style="color:#002b66"></i></span><span class="ali-name">Granalladora</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Servicio Médico')"><span class="ali-icon"><i class="bi bi-heart-pulse-fill" style="color:#002b66"></i></span><span class="ali-name">Servicio Médico</span></div>
                 <div class="area-list-item" onclick="selEditArea(this,'Zona de Abrasivo Usado')"><span class="ali-icon"><i class="bi bi-bricks" style="color:#002b66"></i></span><span class="ali-name">Zona de Abrasivo Usado</span></div>
                 <div class="area-list-item" onclick="selEditArea(this,'Zona de Chatarra')"><span class="ali-icon"><i class="bi bi-recycle" style="color:#002b66"></i></span><span class="ali-name">Zona de Chatarra</span></div>
                 <div class="area-list-item" onclick="selEditArea(this,'Zona de Escombro')"><span class="ali-icon"><i class="bi bi-bricks" style="color:#002b66"></i></span><span class="ali-name">Zona de Escombro</span></div>
@@ -259,6 +366,81 @@
 
         <div class="form-content">
 
+          <!-- Folio editable -->
+          <div class="fcard" id="fc0">
+            <div class="fcard-head">
+              <div class="fcard-icon blue"><i class="bi bi-hash" style="color:#002b66"></i></div>
+              <div class="fcard-title">Número de OA</div>
+              <div class="fcard-check on" id="chk0"><i class="bi bi-check-lg"></i></div>
+            </div>
+            <div class="fcard-body">
+              <div style="display:flex;align-items:center;gap:10px;background:var(--light);border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;">
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy);flex-shrink:0">OA-</span>
+                <input type="number" id="folioInput" min="1" max="9999" placeholder="0001"
+                  style="border:none;background:transparent;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy);width:100%;outline:none;"
+                  oninput="actualizarFolioNuevo(this.value)">
+                <span class="auto-tag" id="folioTag">AUTO</span>
+              </div>
+              <div style="font-size:11px;color:var(--mid);margin-top:6px;">Déjalo vacío para numeración automática</div>
+              <div id="folioWarn" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.3);border-radius:8px;font-size:12px;color:#DC2626;font-weight:600"><i class="bi bi-exclamation-triangle-fill"></i> <span></span></div>
+            </div>
+          </div>
+
+          <!-- Proyecto (opcional) -->
+          <div class="fcard" id="fcProyecto">
+            <div class="fcard-head">
+              <div class="fcard-icon navy"><i class="bi bi-briefcase-fill" style="color:#002b66"></i></div>
+              <div class="fcard-title">Proyecto <span style="font-size:11px;font-weight:400;color:var(--mid)">(Opcional)</span></div>
+              <div class="fcard-check" id="chkProyecto"><i class="bi bi-check-lg"></i></div>
+            </div>
+            <div class="fcard-body">
+              <div style="display:flex;align-items:center;gap:8px;background:var(--light);border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;">
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy);flex-shrink:0">R-</span>
+                <input type="number" id="proyectoInput" min="1000" max="9999" placeholder="1234"
+                  style="border:none;background:transparent;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--navy);width:100%;outline:none;"
+                  oninput="actualizarProyecto(this.value)">
+              </div>
+              <div style="font-size:11px;color:var(--mid);margin-top:6px;">Ejemplo: R-1935</div>
+            </div>
+          </div>
+
+          <!-- Departamento Responsable -->
+          <div class="fcard" id="fcDepto">
+            <div class="fcard-head">
+              <div class="fcard-icon navy"><i class="bi bi-people-fill" style="color:#002b66"></i></div>
+              <div class="fcard-title">Departamento Responsable <span style="font-size:11px;font-weight:400;color:var(--mid)">(Opcional)</span></div>
+              <div class="fcard-check" id="chkDepto"><i class="bi bi-check-lg"></i></div>
+            </div>
+            <div class="fcard-body">
+              <select id="deptoInput" onchange="actualizarDepto(this.value)"
+                style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:12px;background:var(--light);font-family:'Barlow',sans-serif;font-size:15px;font-weight:600;color:var(--navy);outline:none;appearance:none;-webkit-appearance:none;cursor:pointer;">
+                <option value="">— Selecciona un departamento —</option>
+                <option>Infraestructura</option>
+                <option>Elaboración</option>
+                <option>SOS</option>
+                <option>Soldadura</option>
+                <option>RRHH</option>
+                <option>Mantenimiento-Mec</option>
+                <option>Mantenimiento-Admi</option>
+                <option>Mantenimiento-Elec</option>
+                <option>Mantenimiento-Cab</option>
+                <option>Maniobras</option>
+                <option>Tuberos</option>
+                <option>Pañol Central</option>
+                <option>Almacén</option>
+                <option>Maquinado</option>
+                <option>Servicios</option>
+                <option>Mecanicos</option>
+                <option>PA</option>
+                <option>Recubrimientos</option>
+                <option>Dockmaster</option>
+                <option>Paileria</option>
+                <option>Andamios</option>
+              </select>
+              <div style="font-size:11px;color:var(--mid);margin-top:6px;">Área responsable del incumplimiento</div>
+            </div>
+          </div>
+
           <!-- Fecha -->
           <div class="fcard" id="fc1">
             <div class="fcard-head">
@@ -292,8 +474,16 @@
               <div class="area-list" id="areaList">
                 <div class="area-group-label">Diques y Muelles</div>
                 <div class="area-list-item" onclick="selArea(this,'Dique 2')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></i></span><span class="ali-name">Dique 2</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Dique 2 Babor Proa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 2 Babor Proa</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Dique 2 Estribor Proa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 2 Estribor Proa</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Dique 2 Babor Popa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 2 Babor Popa</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Dique 2 Estribor Popa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 2 Estribor Popa</span></div>
                 <div class="area-list-item" onclick="selArea(this,'Plan de Dique 2')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Plan de Dique 2</span></div>
                 <div class="area-list-item" onclick="selArea(this,'Dique 5')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Dique 5 Babor Proa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5 Babor Proa</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Dique 5 Estribor Proa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5 Estribor Proa</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Dique 5 Babor Popa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5 Babor Popa</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Dique 5 Estribor Popa')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5 Estribor Popa</span></div>
                 <div class="area-list-item" onclick="selArea(this,'Muelle de Reparaciones')"><span class="ali-icon"><i class="fa-solid fa-gear" style="color:#002b66"></i></span><span class="ali-name">Muelle de Reparaciones</span></div>
                 <div class="area-list-item" onclick="selArea(this,'Plan de Dique 5')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Plan de Dique 5</span></div>
                 <div class="area-list-item" onclick="selArea(this,'Muelle de Alistamiento')"><span class="ali-icon"><i class="fa-solid fa-ship" style="color:#002b66"></i></span><span class="ali-name">Muelle de Alistamiento</span></div>
@@ -319,7 +509,10 @@
                 <div class="area-list-item" onclick="selArea(this,'Infraestructura')"><span class="ali-icon"><i class="bi bi-building" style="color:#002b66"></i></span><span class="ali-name">Infraestructura</span></div>
 
                 <div class="area-group-label">Zonas Especiales</div>
+                <div class="area-list-item" onclick="selArea(this,'Almacén General')"><span class="ali-icon"><i class="bi bi-box-seam-fill" style="color:#002b66"></i></span><span class="ali-name">Almacén General</span></div>
                 <div class="area-list-item" onclick="selArea(this,'Casa de la Risa')"><span class="ali-icon"><i class="bi bi-house-fill" style="color:#002b66"></i></span><span class="ali-name">Casa de la Risa</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Granalladora')"><span class="ali-icon"><i class="bi bi-gear-fill" style="color:#002b66"></i></span><span class="ali-name">Granalladora</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Servicio Médico')"><span class="ali-icon"><i class="bi bi-heart-pulse-fill" style="color:#002b66"></i></span><span class="ali-name">Servicio Médico</span></div>
                 <div class="area-list-item" onclick="selArea(this,'Zona de Abrasivo Usado')"><span class="ali-icon"><i class="bi bi-bricks" style="color:#002b66"></i></span><span class="ali-name">Zona de Abrasivo Usado</span></div>
                 <div class="area-list-item" onclick="selArea(this,'Zona de Chatarra')"><span class="ali-icon"><i class="bi bi-recycle" style="color:#002b66"></i></span><span class="ali-name">Zona de Chatarra</span></div>
                 <div class="area-list-item" onclick="selArea(this,'Zona de Escombro')"><span class="ali-icon"><i class="bi bi-bricks" style="color:#002b66"></i></span><span class="ali-name">Zona de Escombro</span></div>
