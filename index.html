@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>OA Ambiental - Hutchison Ports TNG</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app" id="app"></div>
+
+    <!-- ====== SCREEN 1: BIENVENIDA ====== -->
+    <template id="view-bienvenida">
+      <div class="screen active" id="screenBienvenida">
+        <div class="bienvenida-bg">
+          <div class="bg-circle bg-circle-1"></div>
+          <div class="bg-circle bg-circle-2"></div>
+          <div class="bg-line bg-line-1"></div>
+          <div class="bg-line bg-line-2"></div>
+        </div>
+
+        <div class="bienvenida-top">
+          <div class="logo-container">
+            <img class="logo-img" src="logo_tng.png" alt="TNG">
+          </div>
+        </div>
+
+        <div class="bienvenida-mid">
+          <div class="bienvenida-label">Sistema Ambiental</div>
+          <div class="bienvenida-title">Observaciones<br><span>Ambientales</span></div>
+          <div class="bienvenida-desc">Registro, seguimiento y cierre de observaciones ambientales en áreas operativas del terminal.</div>
+        </div>
+
+        <div class="bienvenida-bottom">
+          <button class="btn-ingresar" onclick="goTo('screenBienvenida','screenMenu')">
+            Ingresar al Sistema →
+          </button>
+          <div class="bienvenida-version">v1.0.0 — Medio Ambiente TNG</div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ====== SCREEN 2: MENÚ ====== -->
+    <template id="view-menu">
+      <div class="screen" id="screenMenu">
+    <div class="topbar">
+      <div class="topbar-info" style="display:flex;align-items:center;gap:10px">
+        <div style="background:white;border-radius:8px;padding:5px 10px;display:flex;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);flex-shrink:0">
+          <img src="hutchison-logo.png" alt="Hutchison Ports" style="height:22px;width:auto;display:block">
+        </div>
+        <div>
+          <div class="topbar-title">Hutchison Ports TNG</div>
+          <div class="topbar-sub">Sistema de Observaciones Ambientales</div>
+        </div>
+      </div>
+      <div class="topbar-logo-mini">TNG</div>
+        </div>
+
+        <div class="menu-hero">
+          <div style="max-width:860px;margin:0 auto;width:100%">
+            <div class="menu-greeting">Bienvenido de nuevo,</div>
+            <div class="menu-name">Inspector Ambiental</div>
+            <div class="menu-stats">
+              <div class="stat-pill open">
+                <div class="stat-num" id="statAbiertas">3</div>
+                <div class="stat-label">OAs Abiertas</div>
+              </div>
+              <div class="stat-pill closed">
+                <div class="stat-num" id="statCerradas">5</div>
+                <div class="stat-label">OAs Cerradas</div>
+              </div>
+              <div class="stat-pill">
+                <div class="stat-num" id="statTotal">8</div>
+                <div class="stat-label">Total 2026</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-options">
+          <div class="menu-section-label">Acciones</div>
+
+          <div class="menu-card" onclick="goTo('screenMenu','screenResponsable')">
+            <div class="menu-card-icon nuevo"><span class="ali-icon"><i class="bi bi-plus" style="color: white;"></i></span></div>
+            <div class="menu-card-text">
+              <div class="menu-card-title">Nuevo Registro</div>
+              <div class="menu-card-desc">Levanta una nueva observación ambiental en campo</div>
+            </div>
+            <div class="menu-card-arrow">></div>
+          </div>
+
+          <div class="menu-card" onclick="goTo('screenMenu','screenPasados')">
+            <div class="menu-card-icon pasados"><span class="ali-icon"><i class="bi bi-clipboard2-fill" style="color: white;"></i></span></div>
+            <div class="menu-card-text">
+              <div class="menu-card-title">Registros Pasados</div>
+              <div class="menu-card-desc">Consulta y actualiza el estatus de OAs anteriores</div>
+            </div>
+            <div class="menu-card-arrow"></div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ====== SCREEN RESPONSABLE ====== -->
+    <template id="view-responsable">
+      <div class="screen" id="screenResponsable">
+        <div class="topbar">
+          <button class="topbar-back" onclick="goBack('screenResponsable','screenMenu')"><span class="ali-icon"><i class="bi bi-arrow-left" style="color:white;"></i></span></button>
+          <div class="topbar-info">
+            <div class="topbar-title">¿Quién registra?</div>
+            <div class="topbar-sub">Selecciona tu identificador</div>
+          </div>
+          <div class="topbar-logo-mini">TNG</div>
+        </div>
+        <div class="responsable-content">
+          <div class="responsable-desc">Selecciona las siglas del inspector que está levantando esta observación ambiental.</div>
+          <div class="responsable-list">
+            <div class="responsable-item" onclick="selResponsable('DMI')">
+              <div class="resp-siglas">DMI</div>
+              <div class="resp-arrow"><i class="bi bi-chevron-right"></i></div>
+            </div>
+            <div class="responsable-item" onclick="selResponsable('ARL')">
+              <div class="resp-siglas">ARL</div>
+              <div class="resp-arrow"><i class="bi bi-chevron-right"></i></div>
+            </div>
+            <div class="responsable-item" onclick="selResponsable('EBG')">
+              <div class="resp-siglas">EBG</div>
+              <div class="resp-arrow"><i class="bi bi-chevron-right"></i></div>
+            </div>
+            <div class="responsable-item" onclick="selResponsable('KRC')">
+              <div class="resp-siglas">KRC</div>
+              <div class="resp-arrow"><i class="bi bi-chevron-right"></i></div>
+            </div>
+            <div class="responsable-item" onclick="selResponsable('CR')">
+              <div class="resp-siglas">CR</div>
+              <div class="resp-arrow"><i class="bi bi-chevron-right"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ====== SCREEN EDITAR OA ====== -->
+    <template id="view-editar">
+      <div class="screen" id="screenEditar">
+        <div class="topbar">
+          <button class="topbar-back" onclick="goBack('screenEditar','screenDetalle')"><span class="ali-icon"><i class="bi bi-arrow-left" style="color:white;"></i></span></button>
+          <div class="topbar-info">
+            <div class="topbar-title">Editar OA</div>
+            <div class="topbar-sub" id="editarFolioSub">—</div>
+          </div>
+          <div class="topbar-logo-mini">TNG</div>
+        </div>
+        <div class="form-content">
+
+          <!-- Área -->
+          <div class="fcard" id="efc2">
+            <div class="fcard-head">
+              <div class="fcard-icon navy"><i class="bi bi-geo-alt-fill" style="color:#002b66"></i></div>
+              <div class="fcard-title">Área de Observación</div>
+              <div class="fcard-check on" id="echk2"><i class="bi bi-check-lg"></i></div>
+            </div>
+            <div class="fcard-body">
+              <div class="area-search-wrap">
+                <input type="text" class="area-search" id="editAreaSearch" placeholder="🔍  Buscar área..." oninput="filterEditAreas(this.value)">
+              </div>
+              <div class="area-list" id="editAreaList">
+                <div class="area-group-label">Diques y Muelles</div>
+                <div class="area-list-item" onclick="selEditArea(this,'Dique 2')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 2</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Plan de Dique 2')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Plan de Dique 2</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Dique 5')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Muelle de Reparaciones')"><span class="ali-icon"><i class="fa-solid fa-gear" style="color:#002b66"></i></span><span class="ali-name">Muelle de Reparaciones</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Plan de Dique 5')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Plan de Dique 5</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Muelle de Alistamiento')"><span class="ali-icon"><i class="fa-solid fa-ship" style="color:#002b66"></i></span><span class="ali-name">Muelle de Alistamiento</span></div>
+                <div class="area-group-label">Naves</div>
+                <div class="area-list-item" onclick="selEditArea(this,'Nave A - Elaboración')"><span class="ali-icon"><i class="fa-solid fa-building" style="color:#002b66"></i></span><span class="ali-name">Nave A — Elaboración</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Nave B - Elaboración')"><span class="ali-icon"><i class="fa-solid fa-building" style="color:#002b66"></i></span><span class="ali-name">Nave B — Elaboración</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Nave B - Pipe Mill')"><span class="ali-icon"><i class="fa-solid fa-building" style="color:#002b66"></i></span><span class="ali-name">Nave B — Pipe Mill</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Nave C - Ensamble')"><span class="ali-icon"><i class="fa-solid fa-building" style="color:#002b66"></i></span><span class="ali-name">Nave C — Ensamble</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Nave D - Ensamble')"><span class="ali-icon"><i class="fa-solid fa-building" style="color:#002b66"></i></span><span class="ali-name">Nave D — Ensamble</span></div>
+                <div class="area-group-label">Talleres</div>
+                <div class="area-list-item" onclick="selEditArea(this,'Pañol Central')"><span class="ali-icon"><i class="fa-solid fa-box" style="color:#002b66"></i></span><span class="ali-name">Pañol Central</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Taller de Carpintería')"><span class="ali-icon"><i class="fa-solid fa-hammer" style="color:#002b66"></i></span><span class="ali-name">Taller de Carpintería</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Taller de Maniobras')"><span class="ali-icon"><i class="fa-solid fa-briefcase" style="color:#002b66"></i></span><span class="ali-name">Taller de Maniobras</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Taller de Mantenimiento Automotriz (Nave D)')"><span class="ali-icon"><i class="fa-solid fa-car-rear" style="color:#002b66"></i></span><span class="ali-name">Taller Mantenimiento Automotriz</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Taller de Mantenimiento Eléctrico')"><span class="ali-icon"><i class="fa-solid fa-bolt" style="color:#002b66"></i></span><span class="ali-name">Taller Mantenimiento Eléctrico</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Taller de Mantenimiento Mecánico')"><span class="ali-icon"><i class="fa-solid fa-wrench" style="color:#002b66"></i></span><span class="ali-name">Taller Mantenimiento Mecánico</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Taller de Mantenimiento Naval')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Taller Mantenimiento Naval</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Taller de Maquinado')"><span class="ali-icon"><i class="fa-solid fa-gear" style="color:#002b66"></i></span><span class="ali-name">Taller de Maquinado</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Taller de Servicios')"><span class="ali-icon"><i class="bi bi-tools" style="color:#002b66"></i></span><span class="ali-name">Taller de Servicios</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Taller de Tuberos')"><span class="ali-icon"><i class="bi bi-gear-fill" style="color:#002b66"></i></span><span class="ali-name">Taller de Tuberos</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Infraestructura')"><span class="ali-icon"><i class="bi bi-building" style="color:#002b66"></i></span><span class="ali-name">Infraestructura</span></div>
+                <div class="area-group-label">Zonas Especiales</div>
+                <div class="area-list-item" onclick="selEditArea(this,'Casa de la Risa')"><span class="ali-icon"><i class="bi bi-house-fill" style="color:#002b66"></i></span><span class="ali-name">Casa de la Risa</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Zona de Abrasivo Usado')"><span class="ali-icon"><i class="bi bi-bricks" style="color:#002b66"></i></span><span class="ali-name">Zona de Abrasivo Usado</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Zona de Chatarra')"><span class="ali-icon"><i class="bi bi-recycle" style="color:#002b66"></i></span><span class="ali-name">Zona de Chatarra</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Zona de Escombro')"><span class="ali-icon"><i class="bi bi-bricks" style="color:#002b66"></i></span><span class="ali-name">Zona de Escombro</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Zona de Madera')"><span class="ali-icon"><i class="bi bi-tree-fill" style="color:#002b66"></i></span><span class="ali-name">Zona de Madera</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Zona de Sandblast y Pintura')"><span class="ali-icon"><i class="bi bi-palette-fill" style="color:#002b66"></i></span><span class="ali-name">Zona de Sandblast y Pintura</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Área de Construcción')"><span class="ali-icon"><i class="bi bi-cone-striped" style="color:#002b66"></i></span><span class="ali-name">Área de Construcción</span></div>
+                <div class="area-list-item" onclick="selEditArea(this,'Área de Reparación de Grúas JC')"><span class="ali-icon"><i class="bi bi-cone-striped" style="color:#002b66"></i></span><span class="ali-name">Área de Reparación de Grúas JC</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Incumplimiento -->
+          <div class="fcard" id="efc3">
+            <div class="fcard-head">
+              <div class="fcard-icon blue"><i class="bi bi-exclamation-triangle-fill"></i></div>
+              <div class="fcard-title">Tipo de Incumplimiento</div>
+              <div class="fcard-check on" id="echk3"><i class="bi bi-check-lg"></i></div>
+            </div>
+            <div class="fcard-body">
+              <div class="inc-list">
+                <div class="inc-item" onclick="selEditInc(this,'Incorrecta Segregación RP')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-circle-fill" style="color:#002b66"></i></div><div class="inc-text">Incorrecta Segregación RP</div></div>
+                <div class="inc-item" onclick="selEditInc(this,'Incorrecta Segregación RME')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-recycle" style="color:#002b66"></i></div><div class="inc-text">Incorrecta Segregación RME</div></div>
+                <div class="inc-item" onclick="selEditInc(this,'Incorrecto Almacenaje de Materiales')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-box-seam" style="color:#002b66"></i></div><div class="inc-text">Incorrecto Almacenaje de Materiales</div></div>
+                <div class="inc-item" onclick="selEditInc(this,'Orden y Limpieza')"><div class="inc-radio"></div><div class="inc-emoji"><i class="fa-solid fa-broom" style="color:#002b66"></i></div><div class="inc-text">Orden y Limpieza</div></div>
+                <div class="inc-item" onclick="selEditInc(this,'Movimiento de Residuos')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-truck" style="color:#002b66"></i></div><div class="inc-text">Movimiento de Residuos</div></div>
+                <div class="inc-item" onclick="selEditInc(this,'Contaminación al Suelo — DERRAME')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-droplet-fill" style="color:#002b66"></i></div><div class="inc-text">Contaminación al Suelo — DERRAME</div></div>
+                <div class="inc-item" onclick="selEditInc(this,'Agotamiento de Recursos — FUGA')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-wind" style="color:#002b66"></i></div><div class="inc-text">Agotamiento de Recursos — FUGA</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notas -->
+          <div class="fcard" id="efc5">
+            <div class="fcard-head">
+              <div class="fcard-icon blue"><i class="bi bi-journal-text"></i></div>
+              <div class="fcard-title">Notas</div>
+            </div>
+            <div class="fcard-body">
+              <textarea class="notas-ta" id="editNotasTa" placeholder="Describe brevemente el incumplimiento..." maxlength="300"></textarea>
+            </div>
+          </div>
+
+          <button class="btn-guardar" id="btnGuardarEdicion" onclick="guardarEdicion()" style="margin:0 0 20px">
+            <i class="bi bi-floppy"></i> Guardar Cambios
+          </button>
+
+        </div>
+      </div>
+    </template>
+
+    <!-- ====== SCREEN 3: NUEVO REGISTRO ====== -->
+    <template id="view-nuevo">
+      <div class="screen" id="screenNuevo">
+        <div class="topbar">
+          <button class="topbar-back" onclick="goBack('screenNuevo','screenMenu')"><span class="ali-icon"><i class="bi bi-arrow-left" style="color: white;"></i></span></button>
+          <div class="topbar-info">
+            <div class="topbar-title">Nueva OA</div>
+            <div class="topbar-sub" id="nuevoFolioSub">OA-2026-0043</div>
+          </div>
+          <div class="topbar-logo-mini">TNG</div>
+        </div>
+
+        <div class="form-content">
+
+          <!-- Fecha -->
+          <div class="fcard" id="fc1">
+            <div class="fcard-head">
+              <div class="fcard-icon blue"><span class="ali-icon"><i class="bi bi-calendar-fill" style="color: #002b66;"></i></span></div>
+              <div class="fcard-title">Fecha y Hora</div>
+              <div class="fcard-check on" id="chk1"></div>
+            </div>
+            <div class="fcard-body">
+              <div class="fecha-row">
+                <span style="font-size:22px"><i class="bi bi-clock-fill" style="color: #002b66;"></i></span>
+                <div>
+                  <div class="fecha-val" id="fechaVal"></div>
+                  <div class="fecha-time" id="horaVal"></div>
+                </div>
+                <div class="auto-tag">AUTO</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Area -->
+          <div class="fcard" id="fc2">
+            <div class="fcard-head">
+              <div class="fcard-icon navy"><i class="bi bi-geo-alt-fill" style="color: #002b66;"></i></div>
+              <div class="fcard-title">Area de Observacion</div>
+              <div class="fcard-check" id="chk2"></div>
+            </div>
+            <div class="fcard-body">
+              <div class="area-search-wrap">
+                <input type="text" class="area-search" id="areaSearch" placeholder="icono de lupa  Buscar área..." oninput="filterAreas(this.value)">
+              </div>
+              <div class="area-list" id="areaList">
+                <div class="area-group-label">Diques y Muelles</div>
+                <div class="area-list-item" onclick="selArea(this,'Dique 2')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></i></span><span class="ali-name">Dique 2</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Plan de Dique 2')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Plan de Dique 2</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Dique 5')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Dique 5</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Muelle de Reparaciones')"><span class="ali-icon"><i class="fa-solid fa-gear" style="color:#002b66"></i></span><span class="ali-name">Muelle de Reparaciones</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Plan de Dique 5')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Plan de Dique 5</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Muelle de Alistamiento')"><span class="ali-icon"><i class="fa-solid fa-ship" style="color:#002b66"></i></span><span class="ali-name">Muelle de Alistamiento</span></div>
+
+                <div class="area-group-label">Naves</div>
+                <div class="area-list-item" onclick="selArea(this,'Nave A - Elaboración')"><span class="ali-icon"><i class="fa-solid fa-building" style="color:#002b66"></i></span><span class="ali-name">Nave A — Elaboración</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Nave B - Elaboración')"><span class="ali-icon"><i class="fa-solid fa-building" style="color:#002b66"></i></span><span class="ali-name">Nave B — Elaboración</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Nave B - Pipe Mill')"><span class="ali-icon"><i class="fa-solid fa-building" style="color:#002b66"></i></span><span class="ali-name">Nave B — Pipe Mill</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Nave C - Ensamble')"><span class="ali-icon"><i class="fa-solid fa-building" style="color:#002b66"></i></span><span class="ali-name">Nave C — Ensamble</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Nave D - Ensamble')"><span class="ali-icon"><i class="fa-solid fa-building" style="color:#002b66"></i></span><span class="ali-name">Nave D — Ensamble</span></div>
+
+                <div class="area-group-label">Talleres</div>
+                <div class="area-list-item" onclick="selArea(this,'Pañol Central')"><span class="ali-icon"><i class="fa-solid fa-box" style="color:#002b66"></i></span><span class="ali-name">Pañol Central</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Taller de Carpintería')"><span class="ali-icon"><i class="fa-solid fa-hammer" style="color:#002b66"></i></span><span class="ali-name">Taller de Carpintería</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Taller de Maniobras')"><span class="ali-icon"><i class="fa-solid fa-briefcase" style="color:#002b66"></i></span><span class="ali-name">Taller de Maniobras</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Taller de Mantenimiento Automotriz (Nave D)')"><span class="ali-icon"><i class="fa-solid fa-car-rear" style="color:#002b66"></i></span><span class="ali-name">Taller Mantenimiento Automotriz</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Taller de Mantenimiento Eléctrico')"><span class="ali-icon"><i class="fa-solid fa-bolt" style="color:#002b66"></i></span><span class="ali-name">Taller Mantenimiento Eléctrico</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Taller de Mantenimiento Mecánico')"><span class="ali-icon"><i class="fa-solid fa-wrench" style="color:#002b66"></i></span><span class="ali-name">Taller Mantenimiento Mecánico</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Taller de Mantenimiento Naval')"><span class="ali-icon"><i class="fa-solid fa-anchor" style="color:#002b66"></i></span><span class="ali-name">Taller Mantenimiento Naval</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Taller de Maquinado')"><span class="ali-icon"><i class="fa-solid fa-gear" style="color:#002b66"></i></span><span class="ali-name">Taller de Maquinado</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Taller de Servicios')"><span class="ali-icon"><i class="bi bi-tools" style="color:#002b66"></i></span><span class="ali-name">Taller de Servicios</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Taller de Tuberos')"><span class="ali-icon"><i class="bi bi-gear-fill" style="color:#002b66"></i></span><span class="ali-name">Taller de Tuberos</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Infraestructura')"><span class="ali-icon"><i class="bi bi-building" style="color:#002b66"></i></span><span class="ali-name">Infraestructura</span></div>
+
+                <div class="area-group-label">Zonas Especiales</div>
+                <div class="area-list-item" onclick="selArea(this,'Casa de la Risa')"><span class="ali-icon"><i class="bi bi-house-fill" style="color:#002b66"></i></span><span class="ali-name">Casa de la Risa</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Zona de Abrasivo Usado')"><span class="ali-icon"><i class="bi bi-bricks" style="color:#002b66"></i></span><span class="ali-name">Zona de Abrasivo Usado</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Zona de Chatarra')"><span class="ali-icon"><i class="bi bi-recycle" style="color:#002b66"></i></span><span class="ali-name">Zona de Chatarra</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Zona de Escombro')"><span class="ali-icon"><i class="bi bi-bricks" style="color:#002b66"></i></span><span class="ali-name">Zona de Escombro</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Zona de Madera')"><span class="ali-icon"><i class="bi bi-tree-fill" style="color:#002b66"></i></span><span class="ali-name">Zona de Madera</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Zona de Sandblast y Pintura')"><span class="ali-icon"><i class="bi bi-palette-fill" style="color:#002b66"></i></span><span class="ali-name">Zona de Sandblast y Pintura</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Área de Construcción')"><span class="ali-icon"><i class="bi bi-cone-striped" style="color:#002b66"></i></span><span class="ali-name">Área de Construcción</span></div>
+                <div class="area-list-item" onclick="selArea(this,'Área de Reparación de Grúas JC')"><span class="ali-icon"><i class="bi bi-cone-striped" style="color:#002b66"></i></span><span class="ali-name">Área de Reparación de Grúas JC</span></div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Incumplimiento -->
+          <!-- Incumplimiento -->
+          <div class="fcard locked" id="fc3">
+            <div class="fcard-head">
+              <div class="fcard-icon blue"><i class="bi bi-exclamation-triangle-fill"></i></div>
+              <div class="fcard-title">Tipo de Incumplimiento</div>
+              <div class="fcard-check" id="chk3"><i class="bi bi-check-lg"></i></div>
+            </div>
+            <div class="fcard-body">
+              <div class="inc-list">
+                <div class="inc-item" onclick="selInc(this,'Incorrecta Segregación RP')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-circle-fill" style="color:#002b66"></i></div><div class="inc-text">Incorrecta Segregación RP</div></div>
+                <div class="inc-item" onclick="selInc(this,'Incorrecta Segregación RME')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-recycle" style="color:#002b66"></i></div><div class="inc-text">Incorrecta Segregación RME</div></div>
+                <div class="inc-item" onclick="selInc(this,'Incorrecto Almacenaje de Materiales')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-box-seam" style="color:#002b66"></i></div><div class="inc-text">Incorrecto Almacenaje de Materiales</div></div>
+                <div class="inc-item" onclick="selInc(this,'Orden y Limpieza')"><div class="inc-radio"></div><div class="inc-emoji"><i class="fa-solid fa-broom" style="color:#002b66"></i></div><div class="inc-text">Orden y Limpieza</div></div>
+                <div class="inc-item" onclick="selInc(this,'Movimiento de Residuos')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-truck" style="color:#002b66"></i></div><div class="inc-text">Movimiento de Residuos</div></div>
+                <div class="inc-item" onclick="selInc(this,'Contaminación al Suelo — DERRAME')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-droplet-fill" style="color:#002b66"></i></div><div class="inc-text">Contaminación al Suelo — DERRAME</div></div>
+                <div class="inc-item" onclick="selInc(this,'Agotamiento de Recursos — FUGA')"><div class="inc-radio"></div><div class="inc-emoji"><i class="bi bi-wind" style="color:#002b66"></i></div><div class="inc-text">Agotamiento de Recursos — FUGA</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fotos -->
+          <div class="fcard locked" id="fc4">
+            <div class="fcard-head">
+              <div class="fcard-icon navy"><i class="bi bi-camera"></i></div>
+              <div class="fcard-title">Fotos de Evidencia</div>
+              <div class="fcard-check" id="chk4"><i class="bi bi-check-lg"></i></div>
+            </div>
+            <div class="fcard-body">
+              <div class="fotos-counter">
+                <div class="fotos-counter-label"><span id="fotosCount">0</span>/5 fotos — mínimo 1</div>
+                <div class="fotos-counter-dots">
+                  <div class="fc-dot required" id="fd0"></div>
+                  <div class="fc-dot" id="fd1"></div>
+                  <div class="fc-dot" id="fd2"></div>
+                  <div class="fc-dot" id="fd3"></div>
+                  <div class="fc-dot" id="fd4"></div>
+                </div>
+              </div>
+              <div class="fotos-grid" id="fotosGrid">
+                <div class="foto-slot" id="slot0" onclick="triggerFotoSlot(0)">
+                  <img id="fotoImg0" src="" alt="">
+                  <div class="foto-slot-ph">
+                    <div class="foto-slot-icon"><i class="bi bi-camera-fill"></i></div>
+                    <div class="foto-slot-label">FOTO 1</div>
+                    <div class="foto-slot-num">Obligatoria</div>
+                  </div>
+                  <div class="foto-slot-del" onclick="delFoto(0,event)">✕</div>
+                  <div class="foto-slot-num-badge">Foto 1</div>
+                </div>
+                <div class="foto-slot" id="slot1" onclick="triggerFotoSlot(1)">
+                  <img id="fotoImg1" src="" alt="">
+                  <div class="foto-slot-ph">
+                    <div class="foto-slot-icon">➕</div>
+                    <div class="foto-slot-label">FOTO 2</div>
+                    <div class="foto-slot-num">Opcional</div>
+                  </div>
+                  <div class="foto-slot-del" onclick="delFoto(1,event)">✕</div>
+                  <div class="foto-slot-num-badge">Foto 2</div>
+                </div>
+                <div class="foto-slot" id="slot2" onclick="triggerFotoSlot(2)">
+                  <img id="fotoImg2" src="" alt="">
+                  <div class="foto-slot-ph">
+                    <div class="foto-slot-icon">➕</div>
+                    <div class="foto-slot-label">FOTO 3</div>
+                    <div class="foto-slot-num">Opcional</div>
+                  </div>
+                  <div class="foto-slot-del" onclick="delFoto(2,event)">✕</div>
+                  <div class="foto-slot-num-badge">Foto 3</div>
+                </div>
+                <div class="foto-slot" id="slot3" onclick="triggerFotoSlot(3)">
+                  <img id="fotoImg3" src="" alt="">
+                  <div class="foto-slot-ph">
+                    <div class="foto-slot-icon">➕</div>
+                    <div class="foto-slot-label">FOTO 4</div>
+                    <div class="foto-slot-num">Opcional</div>
+                  </div>
+                  <div class="foto-slot-del" onclick="delFoto(3,event)">✕</div>
+                  <div class="foto-slot-num-badge">Foto 4</div>
+                </div>
+                <div class="foto-slot" id="slot4" onclick="triggerFotoSlot(4)" style="grid-column:1/-1;aspect-ratio:unset;padding:14px">
+                  <img id="fotoImg4" src="" alt="" style="max-height:120px;aspect-ratio:unset">
+                  <div class="foto-slot-ph" style="flex-direction:row;gap:10px">
+                    <div class="foto-slot-icon">➕</div>
+                    <div>
+                      <div class="foto-slot-label">FOTO 5</div>
+                      <div class="foto-slot-num">Opcional</div>
+                    </div>
+                  </div>
+                  <div class="foto-slot-del" onclick="delFoto(4,event)">✕</div>
+                  <div class="foto-slot-num-badge">Foto 5</div>
+                </div>
+              </div>
+              <input type="file" id="fotoInput" accept="image/*" capture="environment" onchange="handleFotoSlot(this)">
+            </div>
+          </div>
+
+          <!-- Notas -->
+          <div class="fcard locked" id="fc5">
+            <div class="fcard-head">
+              <div class="fcard-icon blue"><i class="bi bi-journal-text"></i></div>
+              <div class="fcard-title">Notas (Opcional)</div>
+              <div class="fcard-check" id="chk5"><i class="bi bi-check-lg"></i></div>
+            </div>
+            <div class="fcard-body">
+              <textarea class="notas-ta" id="notasTa" placeholder="Describe brevemente el incumplimiento observado..." maxlength="300" oninput="checkForm()"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <div class="progress-mini">
+            <div class="pm-chip ok" id="pm1"><i class="bi bi-check-lg"></i> Fecha</div>
+            <div class="pm-chip" id="pm2"><i class="bi bi-geo-alt-fill"></i> Área</div>
+            <div class="pm-chip" id="pm3"><i class="bi bi-exclamation-triangle-fill"></i> Tipo</div>
+            <div class="pm-chip" id="pm4"><i class="bi bi-camera"></i> Foto</div>
+          </div>
+          <button class="btn-guardar" id="btnGuardar" disabled onclick="guardarOA()">Guardar Registro</button>
+        </div>
+      </div>
+    </template>
+
+    <!-- ====== SCREEN 4: REGISTROS PASADOS ====== -->
+    <template id="view-pasados">
+      <div class="screen" id="screenPasados">
+          <div class="topbar">
+            <button class="topbar-back" onclick="goBack('screenPasados','screenMenu')"><span class="ali-icon"><i class="bi bi-arrow-left" style="color: white;"></i></span></button>
+            <div class="topbar-info">
+              <div class="topbar-title">Registros Pasados</div>
+              <div class="topbar-sub" id="pasadosSub">8 observaciones totales</div>
+            </div>
+            <div class="topbar-logo-mini">TNG</div>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-btn active" onclick="filterReg('todos',this)">Todos</div>
+            <div class="filter-btn open-f" onclick="filterReg('abierta',this)"><i class="bi bi-circle-fill"></i> Abiertas</div>
+            <div class="filter-btn closed-f" onclick="filterReg('cerrada',this)"><i class="bi bi-circle-fill"></i> Cerradas</div>
+          </div>
+
+          <div class="registros-list" id="registrosList"></div>
+      </div>
+    </template>
+
+    <!-- ====== SCREEN 5: DETALLE OA ====== -->
+    <template id="view-detalle">
+      <div class="screen" id="screenDetalle">
+        <div class="topbar">
+          <button class="topbar-back" onclick="goBack('screenDetalle','screenPasados')"><span class="ali-icon"><i class="bi bi-arrow-left" style="color: white;"></i></span></button>
+          <div class="topbar-info">
+            <div class="topbar-title" id="detalleFolioTitle">OA-2026-0001</div>
+            <div class="topbar-sub" id="detalleStatusSub">Abierta</div>
+          </div>
+          <div class="topbar-logo-mini">TNG</div>
+        </div>
+
+        <div class="detalle-content">
+          <!-- Info -->
+          <div class="detalle-card">
+            <div class="detalle-card-head"><div class="dch-label"><i class="bi bi-card-text"></i> Información General</div></div>
+            <div class="detalle-card-body" id="detalleInfo"></div>
+          </div>
+
+          <!-- Fotos -->
+          <div class="detalle-card" id="detalleFotoCard">
+            <div class="detalle-card-head"><div class="dch-label"><i class="bi bi-camera"></i> Evidencia Fotográfica</div></div>
+            <div class="detalle-card-body" id="detalleFotosBody" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+
+          <!-- Cambiar estatus -->
+          <div class="estatus-section">
+            <div class="estatus-head">
+              <span style="font-size:18px"><i class="bi bi-arrow-repeat"></i></span>
+              <div class="estatus-title">Actualizar Estatus</div>
+            </div>
+            <div class="estatus-body">
+              <div class="estatus-current">
+                <div class="status-dot" id="detalleDot"></div>
+                <div class="ec-label">Estatus actual:</div>
+                <div class="ec-val" id="detalleEstatusVal">Abierta</div>
+              </div>
+              <div class="estatus-options">
+                <div class="est-btn abierta-btn" onclick="selEstatus('abierta',this)" id="btnEstatusAbierta">
+                  <div class="est-btn-icon"><i class="bi bi-circle-fill"></i></div>
+                  <div class="est-btn-label">Abierta</div>
+                  <div class="est-btn-sub">Pendiente de atención</div>
+                </div>
+                <div class="est-btn cerrada-btn" onclick="selEstatus('cerrada',this)" id="btnEstatusCerrada">
+                  <div class="est-btn-icon"><i class="bi bi-check-circle-fill"></i></div>
+                  <div class="est-btn-label">Cerrada</div>
+                  <div class="est-btn-sub">Incumplimiento resuelto</div>
+                </div>
+              </div>
+              <button class="btn-guardar-estatus" onclick="guardarEstatus()">Guardar Cambio de Estatus</button>
+            </div>
+          </div>
+
+          <!-- Descargar PDF -->
+          <button class="btn-pdf" onclick="generarPDF()">
+            <span style="font-size:18px"><i class="bi bi-file-earmark-pdf"></i></span> Descargar PDF
+          </button>
+
+          <!-- Editar OA -->
+          <button class="btn-editar" onclick="abrirEditar()">
+            <span style="font-size:18px"><i class="bi bi-pencil-square"></i></span> Editar OA
+          </button>
+
+        </div>
+      </div>
+    </template>
+
+    <!-- TOAST -->
+    <template id="view-toast">
+      <div class="toast" id="toast"></div>
+    </template>
+
+    <!-- VISOR DE IMAGEN -->
+    <div id="imgVisor" onclick="cerrarVisor()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);align-items:center;justify-content:center;flex-direction:column;gap:12px">
+      <div style="position:absolute;top:16px;right:16px;color:white;font-size:28px;cursor:pointer;line-height:1;padding:8px" onclick="cerrarVisor()">✕</div>
+      <div style="position:absolute;top:16px;left:16px;color:rgba(255,255,255,0.6);font-size:13px;font-family:'Barlow',sans-serif" id="visorLabel">Foto 1</div>
+      <img id="visorImg" src="" alt="" style="max-width:95vw;max-height:85vh;object-fit:contain;border-radius:8px;user-select:none">
+      <div style="display:flex;gap:16px;align-items:center">
+        <button onclick="visorNav(-1);event.stopPropagation()" style="background:rgba(255,255,255,0.15);border:none;color:white;width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
+        <div id="visorDots" style="display:flex;gap:6px"></div>
+        <button onclick="visorNav(1);event.stopPropagation()" style="background:rgba(255,255,255,0.15);border:none;color:white;width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center">›</button>
+      </div>
+    </div>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
