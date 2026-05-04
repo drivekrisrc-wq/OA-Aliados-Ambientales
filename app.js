@@ -268,222 +268,22 @@ function guardarEdicion() {
   }, 800);
 }
 
-// =================== SUPABASE ===================
-const SB_URL  = 'https://rbvoxtqvcavapxwjwmaf.supabase.co';
-const SB_KEY  = 'sb_publishable_SBYEEhjW06rB_qr-jDPt3Q_HLisHjtk';
+// =================== SUPABASE (DESACTIVADO — MODO DEMO) ===================
 const SYNC_KEY = 'tng_last_sync';
 let sincronizando = false;
-
-function sbHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'apikey': SB_KEY,
-    'Authorization': 'Bearer ' + SB_KEY,
-    'Prefer': 'return=minimal'
-  };
-}
-
-// Subir una foto base64 al bucket y devolver URL pública
-async function subirFoto(base64, folio, idx) {
-  if (!base64 || base64 === '[foto]' || !base64.startsWith('data:image')) return null;
-  try {
-    const res  = await fetch(base64);
-    const blob = await res.blob();
-    const ext  = blob.type.includes('png') ? 'png' : 'jpg';
-    const path = `${folio}/foto_${idx}.${ext}`;
-
-    const resp = await fetch(`${SB_URL}/storage/v1/object/fotos-oa/${path}`, {
-      method: 'POST',
-      headers: {
-        'apikey': SB_KEY,
-        'Authorization': 'Bearer ' + SB_KEY,
-        'Content-Type': blob.type,
-        'x-upsert': 'true',
-        'cache-control': '3600'
-      },
-      body: blob
-    });
-
-    if (!resp.ok) {
-      const err = await resp.text();
-      console.warn('Error subiendo foto:', resp.status, err);
-      showToast('<i class="bi bi-exclamation-triangle"></i> Error al subir foto: ' + resp.status);
-      return null;
-    }
-    return `${SB_URL}/storage/v1/object/public/fotos-oa/${path}`;
-  } catch(e) {
-    console.warn('Exception subiendo foto:', e);
-    return null;
-  }
-}
-
-// Sincronizar una OA a Supabase (upsert)
-async function sincronizarOA(r) {
-  // Subir fotos que sean base64 y reemplazar por URLs
-  const fotosUrls = await Promise.all(
-    (r.fotos || []).map((f, i) =>
-      f && f.startsWith('data:image') ? subirFoto(f, r.folio, i) : Promise.resolve(f)
-    )
-  );
-  const fotoUrlFiltradas = fotosUrls.filter(Boolean);
-
-  const payload = {
-    folio:          r.folio,
-    supervisor:     r.supervisor || '—',
-    area:           r.area,
-    tipo:           r.tipo,
-    nivel:          r.nivel || '',
-    fecha:          r.fecha,
-    hora:           r.hora,
-    estatus:        r.estatus,
-    fecha_apertura: r.fechaAperturaISO || null,
-    fecha_cierre:   r.fechaCierreISO   || null,
-    dias_limite:    r.diasLimite ?? null,
-    notas:          r.notas || '',
-    proyecto:       r.proyecto || '',
-    departamento:   r.departamento || '',
-    fotos:          fotoUrlFiltradas
-  };
-
-  const resp = await fetch(`${SB_URL}/rest/v1/oas?folio=eq.${encodeURIComponent(r.folio)}`, {
-    method: 'GET',
-    headers: sbHeaders()
-  });
-  const existe = resp.ok && (await resp.json()).length > 0;
-
-  if (existe) {
-    await fetch(`${SB_URL}/rest/v1/oas?folio=eq.${encodeURIComponent(r.folio)}`, {
-      method: 'PATCH',
-      headers: sbHeaders(),
-      body: JSON.stringify(payload)
-    });
-  } else {
-    await fetch(`${SB_URL}/rest/v1/oas`, {
-      method: 'POST',
-      headers: { ...sbHeaders(), 'Prefer': 'return=minimal' },
-      body: JSON.stringify(payload)
-    });
-  }
-
-  // Actualizar URLs en el registro local
-  if (fotoUrlFiltradas.length > 0) {
-    r.fotos = fotoUrlFiltradas;
-    r.foto  = fotoUrlFiltradas[0];
-    guardarEnStorage();
-  }
-}
-
-async function sincronizarNube() {
-  if (sincronizando) return;
-  sincronizando = true;
-  mostrarSyncStatus('syncing');
-  try {
-    await Promise.all(registros.map(r => sincronizarOA(r)));
-    localStorage.setItem(SYNC_KEY, new Date().toISOString());
-    mostrarSyncStatus('ok');
-    showToast('<i class="bi bi-cloud-check-fill"></i> Sincronizado correctamente');
-  } catch(e) {
-    mostrarSyncStatus('error');
-    showToast('<i class="bi bi-cloud-slash-fill"></i> Error al sincronizar');
-  } finally {
-    sincronizando = false;
-  }
-}
-
-async function cargarDesdeNube() {
-  mostrarSyncStatus('syncing');
-  try {
-    const resp = await fetch(
-      `${SB_URL}/rest/v1/oas?select=*&order=fecha_apertura.desc`,
-      { headers: sbHeaders() }
-    );
-    if (!resp.ok) { mostrarSyncStatus('offline'); return false; }
-    const data = await resp.json();
-    if (!data || data.length === 0) { mostrarSyncStatus('ok'); return false; }
-
-    // Mapa de fotos locales base64 para no perderlas
-    const fotosLocales = {};
-    registros.forEach(r => {
-      const b64 = (r.fotos || []).filter(f => f && f.startsWith('data:image'));
-      if (b64.length) fotosLocales[r.folio] = { fotos: r.fotos, foto: r.foto };
-    });
-
-    const foliosNube = new Set(data.map(r => r.folio));
-    const soloLocales = registros.filter(r => !foliosNube.has(r.folio));
-
-    registros = [
-      ...data.map(r => {
-        const local = fotosLocales[r.folio];
-        const fotos = local ? local.fotos : (r.fotos || []);
-        const foto  = local ? local.foto  : (fotos[0] || '');
-        return {
-          folio:            r.folio,
-          supervisor:       r.supervisor || '—',
-          area:             r.area,
-          tipo:             r.tipo,
-          nivel:            r.nivel,
-          fecha:            r.fecha,
-          hora:             r.hora,
-          estatus:          r.estatus,
-          fechaAperturaISO: r.fecha_apertura,
-          fechaCierreISO:   r.fecha_cierre || null,
-          diasLimite:       r.dias_limite,
-          notas:            r.notas || '',
-          proyecto:         r.proyecto || '',
-          departamento:     r.departamento || '',
-          fotos,
-          foto
-        };
-      }),
-      ...soloLocales
-    ];
-
-    // Actualizar folio counter
-    const maxNum = registros.reduce((max, r) => {
-      const n = parseInt((r.folio || '').replace(/\D/g,'')) || 0;
-      return n > max ? n : max;
-    }, folioCounter);
-    if (maxNum >= folioCounter) folioCounter = maxNum + 1;
-
-    guardarEnStorage();
-    updateStats();
-    localStorage.setItem(SYNC_KEY, new Date().toISOString());
-    mostrarSyncStatus('ok');
-    return true;
-  } catch(e) {
-    mostrarSyncStatus('offline');
-    return false;
-  }
-}
-
-// Eliminar OA de Supabase
-async function eliminarDeNube(folio) {
-  try {
-    await fetch(`${SB_URL}/rest/v1/oas?folio=eq.${encodeURIComponent(folio)}`, {
-      method: 'DELETE',
-      headers: sbHeaders()
-    });
-  } catch(e) {}
-}
-
-function mostrarSyncStatus(estado) {
+async function subirFoto() { return null; }
+async function sincronizarOA() {}
+async function sincronizarNube() {}
+async function cargarDesdeNube() { mostrarSyncStatus(); return false; }
+async function eliminarDeNube() {}
+function mostrarSyncStatus() {
   const el = document.getElementById('syncStatus');
   if (!el) return;
-  const map = {
-    syncing: { icon:'bi-cloud-arrow-up-fill', color:'#D97706', text:'Sincronizando...' },
-    ok:      { icon:'bi-cloud-check-fill',    color:'#6EE7B7', text:'Sincronizado'     },
-    error:   { icon:'bi-cloud-slash-fill',    color:'#F87171', text:'Error'            },
-    offline: { icon:'bi-cloud-slash-fill',    color:'#9CA3AF', text:'Sin conexión'     },
-  };
-  const s = map[estado] || map.offline;
-  const last = localStorage.getItem(SYNC_KEY);
-  const lastStr = last ? new Date(last).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
-  el.innerHTML = `
-    <i class="bi ${s.icon}" style="color:${s.color};font-size:14px"></i>
-    <span style="font-size:11px;color:${s.color};font-weight:600">${s.text}</span>
-    <span style="font-size:10px;color:rgba(255,255,255,0.4);margin-left:4px">· ${lastStr}</span>
-  `;
+  el.innerHTML = '<i class=\"bi bi-info-circle-fill\" style=\"color:#6EE7B7;font-size:14px\"></i> <span style=\"font-size:11px;color:#6EE7B7;font-weight:600\">Modo Demo</span> <span style=\"font-size:10px;color:rgba(255,255,255,0.4);margin-left:4px\">· Solo local</span>';
 }
+
+// =================== GOOGLE SHEETS SYNC (DESACTIVADO — MODO DEMO) ===================
+function sincronizarSheets() {}
 
 // =================== PRIORIDADES ===================
     const PRIORIDADES = {
@@ -1878,61 +1678,6 @@ function generarReporteSemanal() {
   win.document.close();
 }
 
-// =================== GOOGLE SHEETS SYNC ===================
-const GS_URL = 'https://script.google.com/macros/s/AKfycbwDcUe0r5JrLOqxruRItESlDeBf5YqETUaH-J7wsCqGBwAIJ8-SYVw905-Lxa0JXJctMQ/exec';
-
-function sincronizarSheets() {
-  try {
-    const datos = registros.map(r => ({
-      folio:            r.folio,
-      supervisor:       r.supervisor || '—',
-      area:             r.area,
-      tipo:             r.tipo,
-      nivel:            r.nivel || '',
-      fecha:            r.fecha,
-      hora:             r.hora,
-      estatus:          r.estatus,
-      fechaAperturaISO: r.fechaAperturaISO || '',
-      fechaCierreISO:   r.fechaCierreISO   || '',
-      diasLimite:       r.diasLimite ?? '',
-      notas:            r.notas || '',
-      proyecto:         r.proyecto || '',
-      departamento:     r.departamento || ''
-    }));
-
-    const payload = JSON.stringify({ action: 'sync', registros: datos });
-
-    const iframeId = 'gs_iframe_' + Date.now();
-    const iframe = document.createElement('iframe');
-    iframe.name = iframeId;
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = GS_URL;
-    form.target = iframeId;
-    form.style.display = 'none';
-
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'payload';
-    input.value = payload;
-    form.appendChild(input);
-
-    document.body.appendChild(form);
-    form.submit();
-
-    setTimeout(() => {
-      if (form.parentNode) form.parentNode.removeChild(form);
-      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-    }, 5000);
-
-  } catch(e) {
-    console.warn('Error sincronizando Sheets:', e);
-  }
-}
-
 // =================== TOAST ===================
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -1943,7 +1688,4 @@ function showToast(msg) {
 
 // Init
 updateStats();
-cargarDesdeNube().then(cargado => {
-  if (cargado) { renderRegistros(); updateStats(); }
-  sincronizarSheets();
-});
+mostrarSyncStatus();
