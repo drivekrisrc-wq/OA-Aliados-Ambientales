@@ -89,9 +89,7 @@ function actualizarDepto(val) {
 }
 let supervisorActual = null;
 
-function selResponsable(siglas) {
-  supervisorActual = siglas;
-  showToast('<i class="bi bi-person-check-fill"></i> Supervisor: ' + siglas);
+
   goTo('screenResponsable', 'screenNuevo');
   // Mostrar badge del supervisor en el topbar
   const sub = document.getElementById('nuevoFolioSub');
