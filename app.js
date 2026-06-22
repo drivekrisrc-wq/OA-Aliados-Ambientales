@@ -2,7 +2,7 @@ function injectTemplates() {
       const app = document.getElementById('app');
       if (!app) return false;
       if (app.children.length) return true;
-      const ids = ['bienvenida','responsable','menu','nuevo','pasados','detalle','editar','toast'];
+      const ids = ['bienvenida','menu','nuevo','pasados','detalle','editar','toast'];
       const html = ids.map(id => {
         const t = document.getElementById('view-' + id);
         return t ? t.innerHTML.trim() : '';
@@ -89,11 +89,12 @@ function actualizarDepto(val) {
 }
 let supervisorActual = null;
 
-
-  goTo('screenResponsable', 'screenNuevo');
-  // Mostrar badge del supervisor en el topbar
+function irANuevoRegistro() {
+  supervisorActual = null;
+  goTo('screenMenu', 'screenNuevo');
+  // Limpiar cualquier badge de supervisor del topbar
   const sub = document.getElementById('nuevoFolioSub');
-  if (sub) sub.textContent = (sub.textContent.split('·')[0]).trim() + ' · ' + siglas;
+  if (sub) sub.textContent = (sub.textContent.split('·')[0]).trim();
   // Inicializar campo folio con el siguiente número automático
   setTimeout(() => {
     const fi = document.getElementById('folioInput');
