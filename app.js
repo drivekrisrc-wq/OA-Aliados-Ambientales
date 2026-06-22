@@ -222,7 +222,7 @@ function guardarEdicion() {
         reg.folio = nuevoFolio;
         if (num >= folioCounter) folioCounter = num + 1;
         guardarEnStorage();
-        localStorage.setItem('tng_oa_folio', String(folioCounter));
+        localStorage.setItem(FOLIO_KEY, String(folioCounter));
       }
     }
   }
@@ -278,7 +278,43 @@ async function eliminarDeNube() {}
 function mostrarSyncStatus() {
   const el = document.getElementById('syncStatus');
   if (!el) return;
-  el.innerHTML = '<i class=\"bi bi-info-circle-fill\" style=\"color:#6EE7B7;font-size:14px\"></i> <span style=\"font-size:11px;color:#6EE7B7;font-weight:600\">Modo Demo</span> <span style=\"font-size:10px;color:rgba(255,255,255,0.4);margin-left:4px\">· Solo local</span>';
+  el.innerHTML = '<i class=\"bi bi-hdd-fill\" style=\"color:#6EE7B7;font-size:14px\"></i> <span style=\"font-size:11px;color:#6EE7B7;font-weight:600\">Solo local</span> <span style=\"font-size:10px;color:rgba(255,255,255,0.4);margin-left:4px\">· sin sincronizar</span>';
+}
+
+// Importa (solo lectura) las observaciones de la app original que aún no están aquí.
+// Es ADITIVO: nunca borra ni sobrescribe lo que tengas en local, y NUNCA modifica la app original.
+function cargarDeOriginal() {
+  try {
+    const origRaw = localStorage.getItem(ORIG_STORAGE_KEY);
+    if (!origRaw) {
+      showToast('<i class="bi bi-info-circle-fill"></i> No hay datos de la app original en este dispositivo');
+      return;
+    }
+    const origRegistros = JSON.parse(origRaw) || [];
+    const foliosLocales = new Set(registros.map(r => r.folio));
+    let nuevos = 0;
+    origRegistros.forEach(r => {
+      if (!foliosLocales.has(r.folio)) {
+        registros.push(r);
+        nuevos++;
+      }
+    });
+    if (nuevos > 0) {
+      // Recalcular contador de folio por si los importados son más altos
+      registros.forEach(r => {
+        const n = parseInt(String(r.folio).replace(/\D/g, ''));
+        if (!isNaN(n) && n >= folioCounter) folioCounter = n + 1;
+      });
+      guardarEnStorage();
+      updateStats();
+      if (typeof renderRegistros === 'function') renderRegistros();
+      showToast('<i class="bi bi-check-lg"></i> ' + nuevos + ' observación(es) cargada(s) de la app original');
+    } else {
+      showToast('<i class="bi bi-check-lg"></i> Ya tienes todas las observaciones de la app original');
+    }
+  } catch(e) {
+    showToast('<i class="bi bi-exclamation-triangle-fill"></i> No se pudieron leer los datos de la app original');
+  }
 }
 
 // =================== GOOGLE SHEETS SYNC (DESACTIVADO — MODO DEMO) ===================
@@ -325,8 +361,12 @@ function formatFechaISO(isoStr) {
 }
 
 // =================== LOCALSTORAGE ===================
-const STORAGE_KEY = 'tng_oa_registros';
-const FOLIO_KEY   = 'tng_oa_folio';
+// Llaves de la app ORIGINAL: SOLO se leen (para importar/visualizar). NUNCA se escriben.
+const ORIG_STORAGE_KEY = 'tng_oa_registros';
+const ORIG_FOLIO_KEY   = 'tng_oa_folio';
+// Llaves locales de ESTA app: aquí se guarda todo. Independientes de la app original.
+const STORAGE_KEY = 'tng_oa_local_registros';
+const FOLIO_KEY   = 'tng_oa_local_folio';
 
 function comprimirFoto(base64, calidad = 0.4) {
   return new Promise(resolve => {
@@ -372,6 +412,17 @@ async function guardarEnStorage() {
 
 function cargarDeStorage() {
   try {
+    // Importación ÚNICA desde la app original (solo lectura).
+    // Si esta app todavía no tiene datos propios, copia las observaciones
+    // de la app original a su almacenamiento local. La app original NUNCA se modifica.
+    if (localStorage.getItem(STORAGE_KEY) === null) {
+      const origRaw = localStorage.getItem(ORIG_STORAGE_KEY);
+      if (origRaw) {
+        localStorage.setItem(STORAGE_KEY, origRaw);
+        const origFolio = localStorage.getItem(ORIG_FOLIO_KEY);
+        if (origFolio) localStorage.setItem(FOLIO_KEY, origFolio);
+      }
+    }
     const raw   = localStorage.getItem(STORAGE_KEY);
     const folio = localStorage.getItem(FOLIO_KEY);
     if (raw) {
